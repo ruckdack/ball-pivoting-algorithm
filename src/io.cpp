@@ -1,12 +1,11 @@
 #include "io.h"
+#include "io_details.h"
 
 #include "helpers.h"
 
 #include <fstream>
 #include <list>
 #include <iostream>
-
-static Vertex readVertex(std::vector<std::string> splittedLine);
 
 Vertices IO::readVertices(std::string path) {
     // TODO reserve enough space
@@ -41,7 +40,7 @@ void IO::writeMesh(std::string path, Vertices &vertices, Faces &faces) {
     }
 }
 
-Vertex readVertex(std::vector<std::string> splittedLine) {
+Vertex IO::readVertex(std::vector<std::string> splittedLine) {
     if (splittedLine.size() != 4) 
         throw std::runtime_error("Wrong file format.");
     float x = std::stof(splittedLine[1]);

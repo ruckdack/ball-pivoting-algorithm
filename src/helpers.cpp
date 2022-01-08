@@ -27,7 +27,7 @@ std::vector<size_t> Helpers::findChar(const std::string str, const char c) {
     return locations;
 }
 
-bool Helpers::pathSyntaxValid(std::string path) { // how about regex?  ((".." or "." or all_allowed_symbols+) concat "/"" )* concat all_allowed_symbols+ concat ".obj"
+bool Helpers::pathSyntaxValid(std::string path) {
     std::regex re(R"(((\.{1,2}|([A-Za-z_0-9]|\-)+)\/)*([A-Za-z_0-9]|\-)+\.obj)");
     return std::regex_match(path, re);
 }
