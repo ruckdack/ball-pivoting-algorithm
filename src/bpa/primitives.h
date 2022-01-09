@@ -8,17 +8,19 @@ struct Vertex {
     float z;
 };
 
+typedef size_t VertexIndex;
+
 // indexes a vertex vector
 struct Edge {
-    size_t a;
-    size_t b;
+    VertexIndex a;
+    VertexIndex b;
 };
 
 // indexes a vertex vector
 struct Triangle {
-    size_t a;
-    size_t b;
-    size_t c;
+    VertexIndex a;
+    VertexIndex b;
+    VertexIndex c;
 };
 
 typedef std::vector<Vertex> Vertices;

@@ -1,7 +1,7 @@
-#include "primitives.h"
-#include "helpers.h"
-#include "io.h"
-#include "bpa.h"
+#include "bpa/primitives.h"
+#include "bpa/bpa.h"
+#include "helpers/helpers.h"
+#include "io/io.h"
 
 #include <iostream>
 #include <string>
