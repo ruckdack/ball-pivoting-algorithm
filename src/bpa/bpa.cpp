@@ -11,15 +11,22 @@ Faces BPA::bpa(Vertices vertices, float ballRadius) {
     Query query(vertices, 2*ballRadius);
     std::list<VertexIndex> usedVertices;
 
+    auto notUsed = [&](VertexIndex vertexIndex) {
+        return usedVertices.end() != std::find(usedVertices.begin(), usedVertices.end(), vertexIndex);
+    };
+
     while (true) {
         while (auto optionalEdge = front.getActiveEdge()) {
             auto edge = optionalEdge.value();
-            if (auto optionalVertexIndex = ballPivot(query, edge)) {
+            if (auto optionalVertexIndex = ballPivot(query, edge); optionalVertexIndex 
+                    && (notUsed(optionalVertexIndex.value()) || front.contains(optionalVertexIndex.value()))) {
                 auto vertexIndex = optionalVertexIndex.value();
-                if (false/*TODO check used vertices*/ || !front.contains(optionalVertexIndex.value())) break;
+                faces.push_back({edge.a, vertexIndex, edge.b});
                 usedVertices.push_back(edge.a);
                 usedVertices.push_back(edge.b);
                 usedVertices.push_back(vertexIndex);
+                if (front.contains({vertexIndex, edge.a})) front.glue({edge.a, vertexIndex}, {vertexIndex, edge.a});
+                if (front.contains({vertexIndex, edge.b})) front.glue({edge.b, vertexIndex}, {vertexIndex, edge.b});
             } else {
                 front.markAsBoundary(edge);
             }  
@@ -31,12 +38,9 @@ Faces BPA::bpa(Vertices vertices, float ballRadius) {
             VertexIndex a = seedTriangle.a;
             VertexIndex b = seedTriangle.b;
             VertexIndex c = seedTriangle.c;
-            Edge edge1 {a, b};
-            Edge edge2 {b, c};
-            Edge edge3 {c, a};
-            front.insertEdge(edge1);
-            front.insertEdge(edge2);
-            front.insertEdge(edge3);
+            front.insertEdge({a, b});
+            front.insertEdge({b, c});
+            front.insertEdge({c, a});
         } else {
             return Helpers::convertFromListToVector(faces);
         }
