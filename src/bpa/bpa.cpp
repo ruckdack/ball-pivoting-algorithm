@@ -12,7 +12,7 @@ Faces BPA::bpa(Vertices vertices, float ballRadius) {
     std::list<VertexIndex> usedVertices;
 
     auto notUsed = [&](VertexIndex vertexIndex) {
-        return usedVertices.end() != std::find(usedVertices.begin(), usedVertices.end(), vertexIndex);
+        return usedVertices.end() == std::find(usedVertices.begin(), usedVertices.end(), vertexIndex);
     };
 
     while (true) {
@@ -21,12 +21,12 @@ Faces BPA::bpa(Vertices vertices, float ballRadius) {
             if (auto optionalVertexIndex = ballPivot(query, edge); optionalVertexIndex 
                     && (notUsed(optionalVertexIndex.value()) || front.contains(optionalVertexIndex.value()))) {
                 auto vertexIndex = optionalVertexIndex.value();
-                faces.push_back({edge.a, vertexIndex, edge.b});
-                usedVertices.push_back(edge.a);
-                usedVertices.push_back(edge.b);
+                faces.push_back({edge.i, vertexIndex, edge.j});
+                usedVertices.push_back(edge.i);
+                usedVertices.push_back(edge.j);
                 usedVertices.push_back(vertexIndex);
-                if (front.contains({vertexIndex, edge.a})) front.glue({edge.a, vertexIndex}, {vertexIndex, edge.a});
-                if (front.contains({vertexIndex, edge.b})) front.glue({edge.b, vertexIndex}, {vertexIndex, edge.b});
+                if (front.contains({vertexIndex, edge.i})) front.glue({edge.i, vertexIndex}, {vertexIndex, edge.i});
+                if (front.contains({vertexIndex, edge.j})) front.glue({edge.j, vertexIndex}, {vertexIndex, edge.j});
             } else {
                 front.markAsBoundary(edge);
             }  
@@ -35,14 +35,12 @@ Faces BPA::bpa(Vertices vertices, float ballRadius) {
         if (auto optionalSeedTriangle = findSeedTriangle(vertices)) {
             auto seedTriangle = optionalSeedTriangle.value();
             faces.push_back(seedTriangle);
-            VertexIndex a = seedTriangle.a;
-            VertexIndex b = seedTriangle.b;
-            VertexIndex c = seedTriangle.c;
-            front.insertEdge({a, b});
-            front.insertEdge({b, c});
-            front.insertEdge({c, a});
+            VertexIndex a = seedTriangle.i;
+            VertexIndex b = seedTriangle.j;
+            VertexIndex c = seedTriangle.k;
+            front.insertSeedTriangle({a, b}, {b, c}, {c, a});
         } else {
-            return Helpers::convertFromListToVector(faces);
+            return Helpers::convertFromListToVector<Triangle>(faces);
         }
     }
 }
