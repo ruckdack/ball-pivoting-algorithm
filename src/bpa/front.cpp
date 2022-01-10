@@ -18,11 +18,11 @@ std::optional<Edge> Front::getActiveEdge() {
 
 void Front::join(Edge edge, VertexIndex vertexIndex) {
     for (Loop loop : front) {
-        if (Helpers::contains<Edge>(loop, edge)) {   
-            loop.remove(edge);
-            // TODO loop order is not yet maintained here
-            loop.push_back({edge.i, vertexIndex});
-            loop.push_back({vertexIndex, edge.j});
+        auto edgeIter = std::find(loop.begin(), loop.end(), edge);
+        if (edgeIter != loop.end()) {
+            loop.insert(edgeIter, {vertexIndex, edge.j});
+            loop.insert(edgeIter, {edge.i, vertexIndex});
+            loop.erase(edgeIter);
             return;
         }
     }
