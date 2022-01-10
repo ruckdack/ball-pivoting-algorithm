@@ -31,12 +31,3 @@ bool Helpers::pathSyntaxValid(std::string path) {
     std::regex re(R"(((\.{1,2}|([A-Za-z_0-9]|\-)+)\/)*([A-Za-z_0-9]|\-)+\.obj)");
     return std::regex_match(path, re);
 }
-
-std::vector<Triangle> Helpers::convertFromListToVector(std::list<Triangle> &list) {
-    std::vector<Triangle> vector;
-    vector.reserve(list.size());
-    for (auto l : list) {
-        vector.push_back(l);
-    }
-    return vector;
-}
