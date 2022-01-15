@@ -6,11 +6,11 @@ BPA::Query::Query(Vertices &v, float size) : vertices(v), voxelSize(size) {
     // more stuff later
 }
 
-std::vector<VertexIndex> Query::getNeighbourhood(Vertex v) {
+std::vector<VertexIndex> Query::getNeighbourhood(VertexIndex vertexIndex) {
     // dummy implementation
-    std::vector<VertexIndex> indicees(vertices.size());
+    std::vector<VertexIndex> indicees(vertices.size() - 1);
     for (VertexIndex i = 0; i < vertices.size(); i++) {
-        indicees[i] = i;
+        if (i != vertexIndex) indicees.push_back(i);
     }
     return indicees;
 }
