@@ -35,7 +35,7 @@ void IO::writeMesh(std::string path, Vertices &vertices, Faces &faces) {
     }
     for (Triangle face : faces) {
         file << "f";
-        file << " " << face.i << "/" << face.j << "/" << face.k;
+        file << " " << face.i + 1 << " " << face.j + 1 << " " << face.k + 1;
         file << std::endl;
     }
 }
