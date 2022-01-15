@@ -2,6 +2,7 @@
 
 #include <list>
 #include <optional>
+#include <tuple>
 
 namespace BPA {
     typedef std::list<Edge> Loop;
@@ -27,8 +28,9 @@ namespace BPA {
             const float voxelSize;
         public:
             Query(Vertices &vertices, float voxelSize);
-            std::vector<VertexIndex> getNeighbourhood(Vertex v);
+            std::vector<VertexIndex> getNeighbourhood(VertexIndex vertexIndex);
     };
-    std::optional<VertexIndex> ballPivot(Query query, Edge edge);
-    std::optional<Triangle> findSeedTriangle(Vertices &vertices);
+    std::optional<std::tuple<Triangle, Vertex>> findSeedTriangle(const Vertices &vertices, Query query, const float ballRadius);    
+    std::optional<std::tuple<VertexIndex, Vertex>> ballPivot(const Vertices &vertices, Query query, const Edge edge, const Vertex ballPosition, const float ballRadius);
+    std::vector<Vertex> intersectCircleSphere(const Vertex circleCenter, const float circleRadius, const Vector circleNormal, const Vertex sphereCenter, const float sphereRadius);
 }
