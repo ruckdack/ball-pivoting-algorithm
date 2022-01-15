@@ -64,7 +64,7 @@ Vector operator*(const float scale, const Vector vector) {
 
 Vector cross(const Vector vector1, const Vector vector2) {
     return {
-        vector1.y*vector2.z - vector1.z*vector1.y,
+        vector1.y*vector2.z - vector1.z*vector2.y,
         vector1.z*vector2.x - vector1.x*vector2.z,
         vector1.x*vector2.y - vector1.y*vector2.x
     };
