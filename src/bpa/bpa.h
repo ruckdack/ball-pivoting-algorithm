@@ -1,5 +1,5 @@
 #include "primitives.h"
 
 namespace BPA {
-    Faces bpa(Vertices vertices, float ballRadius);
+    Faces bpa(const Vertices vertices, const float ballRadius);
 }
