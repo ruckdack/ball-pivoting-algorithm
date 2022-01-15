@@ -8,6 +8,7 @@ Front::Front(Vertices &v) : vertices(v) {}
 std::optional<Edge> Front::getActiveEdge() {
     for (Loop loop : front) {
         for (Edge edge : loop) {
+            if (boundary.size() == 0) return edge;
             for (Edge boundaryEdge : boundary) {
                 if (edge != boundaryEdge) return edge;
             }
