@@ -12,6 +12,8 @@ namespace BPA {
             std::list<Loop> front;
             std::list<Edge> boundary;
             bool areConsecutive(Loop &loop, Loop::iterator edge1Iterator, Loop::iterator edge2Iterator);
+            bool boundaryContains(Edge edge);
+            bool loopIntegrity(Loop &loop);
         public:
             Front(Vertices &verticies);
             std::optional<Edge> getActiveEdge();

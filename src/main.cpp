@@ -22,12 +22,17 @@ int main(int argc, char *argv[]) {
     }
     Vertices vertices = IO::readVertices(inputPath);
     Faces faces = BPA::bpa(vertices, ballRadius);
-    if (faces.size() <= 0) {
-        std::cout << "no faces" << std::endl;
-    }
     IO::writeMesh(outputPath, vertices, faces);
     return 0;
 }
 
 // TODO check which function inputs could be const
 // TODO put reference AND-sign to type
+// move ball positions into front
+
+// #include "bpa/bpa_details.h"
+
+// int main() {
+//     Vertices isec = BPA::intersectCircleSphere({0,0,0}, 1, {0,0,1}, {2,0,1}, 2);
+//     for (Vertex i : isec) std::cout << "(" << i.x << "," << i.y << "," << i.z << ")" << std::endl; 
+// }

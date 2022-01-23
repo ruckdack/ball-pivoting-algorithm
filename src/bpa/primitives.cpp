@@ -1,6 +1,11 @@
 #include "primitives.h"
 
 #include <cmath>
+#include <iostream>
+
+std::string toString(const Edge edge) {
+    return std::to_string(edge.i) + "-" + std::to_string(edge.j);
+}
 
 bool operator==(const Edge edge1, const Edge edge2) {
     return edge1.i == edge2.i && edge1.j == edge2.j;

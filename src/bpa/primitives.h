@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vector>
+#include <string>
 
 struct Vertex {
     float x;
@@ -32,6 +33,8 @@ struct Vector {
 typedef std::vector<Vertex> Vertices;
 typedef std::vector<Edge> Edges;
 typedef std::vector<Triangle> Faces;
+
+std::string toString(const Edge edge);
 
 bool operator==(const Edge edge1, const Edge edge2);
 bool operator!=(const Edge edge1, const Edge edge2);

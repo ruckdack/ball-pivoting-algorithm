@@ -3,17 +3,23 @@
 
 #include "../helpers/helpers.h"
 
+#include <cassert>
 #include <optional>
 #include <cmath>
 #include <set>
 #include <iostream>
+#include <map>
+
+#define EPS 0.0001f
+#define asserteq(val1, val2, msg) assert(((void)msg, val1 == val2))
+#define asserteqf(val1, val2, msg) assert(((void)msg, std::abs(val1 - val2) < EPS))
 
 Faces BPA::bpa(Vertices vertices, const float ballRadius) {
     std::list<Triangle> faces;
     Front front(vertices);
     Query query(vertices, 2*ballRadius);
     std::list<VertexIndex> usedVertices;
-    Vertex currentBallPosition;
+    std::map<std::string, Vertex> ballPositions;
 
     auto notUsed = [&](VertexIndex vertexIndex) {
         return usedVertices.end() == std::find(usedVertices.begin(), usedVertices.end(), vertexIndex);
@@ -25,16 +31,24 @@ Faces BPA::bpa(Vertices vertices, const float ballRadius) {
                 << ",(" << vertices[triangle.k].x << "," << vertices[triangle.k].y << "," << vertices[triangle.k].z << ")" << std::endl;
     };
 
+    auto printIndexFace = [&](Triangle triangle) {
+        std::cout << "(" << triangle.i << "," << triangle.j << "," << triangle.k << ")"<< std::endl;
+    };
+
     if (auto optionalSeedTriangle = findSeedTriangle(vertices, query, ballRadius)) {
         auto [seedTriangle, newBallPosition] = optionalSeedTriangle.value();
-        currentBallPosition = newBallPosition;
-        faces.push_back(seedTriangle);
-        std::cout << "inital triangle: ";
-        printFace(faces.back());
-        VertexIndex a = seedTriangle.i;
-        VertexIndex b = seedTriangle.j;
-        VertexIndex c = seedTriangle.k;
-        front.insertSeedTriangle({a, b}, {b, c}, {c, a});
+        faces.push_back(seedTriangle); std::cout << "inital triangle: ";
+        printIndexFace(faces.back());
+        VertexIndex i = seedTriangle.i;
+        VertexIndex j = seedTriangle.j;
+        VertexIndex k = seedTriangle.k;
+        usedVertices.push_back(i);
+        usedVertices.push_back(j);
+        usedVertices.push_back(k);
+        ballPositions[toString({i, j})] = newBallPosition;
+        ballPositions[toString({j, k})] = newBallPosition;
+        ballPositions[toString({k, i})] = newBallPosition;
+        front.insertSeedTriangle({i, j}, {j, k}, {k, i});
     } else {
         // TODO error message instead: no seed triangle found!
         return Helpers::convertFromListToVector<Triangle>(faces);
@@ -42,22 +56,34 @@ Faces BPA::bpa(Vertices vertices, const float ballRadius) {
 
     while (auto optionalEdge = front.getActiveEdge()) {
         auto edge = optionalEdge.value();
-        auto optionalVertexIndex = ballPivot(vertices, query, edge, currentBallPosition, ballRadius);
+        Vertex ballPosition = ballPositions[toString(edge)];
+        std::cout << "ball position: (" << ballPosition.x << "," << ballPosition.y << "," << ballPosition.z << ")" << std::endl;
+        std::cout << "pivoting on (" << edge.i << "," << edge.j << ")" << std::endl;
+        auto optionalVertexIndex = ballPivot(vertices, query, edge, ballPosition, ballRadius);
+        // ballPositions.erase(toString(edge));
         if (optionalVertexIndex) {
             auto [vertexIndex, newBallPosition] = optionalVertexIndex.value();
-            currentBallPosition = newBallPosition;
             if (notUsed(vertexIndex) || front.contains(vertexIndex)) {
                 faces.push_back({edge.i, vertexIndex, edge.j});
-                std::cout << "  next triangle: ";
-                printFace(faces.back());
-                usedVertices.push_back(edge.i);
-                usedVertices.push_back(edge.j);
+                std::cout << "new triangle: "; printIndexFace(faces.back());
                 usedVertices.push_back(vertexIndex);
-                if (front.contains({vertexIndex, edge.i})) front.glue({edge.i, vertexIndex}, {vertexIndex, edge.i});
-                if (front.contains({vertexIndex, edge.j})) front.glue({edge.j, vertexIndex}, {vertexIndex, edge.j});
+                front.join(edge, vertexIndex);
+                ballPositions[toString({edge.i, vertexIndex})] = newBallPosition;
+                ballPositions[toString({vertexIndex, edge.j})] = newBallPosition;
+                if (front.contains({vertexIndex, edge.i})) {
+                    front.glue({edge.i, vertexIndex}, {vertexIndex, edge.i});
+                    // ballPositions.erase(toString({vertexIndex, edge.i}));
+                    // ballPositions.erase(toString({edge.i, vertexIndex}));
+                }
+                if (front.contains({edge.j, vertexIndex})) {
+                    front.glue({vertexIndex, edge.j}, {edge.j, vertexIndex});
+                    // ballPositions.erase(toString({vertexIndex, edge.j}));
+                    // ballPositions.erase(toString({edge.j, vertexIndex}));
+                }
                 continue;
             }
         }
+        std::cout << "marking as boundary" << std::endl;
         front.markAsBoundary(edge);
     }
 
@@ -71,125 +97,149 @@ std::optional<std::tuple<Triangle, Vertex>> BPA::findSeedTriangle(const Vertices
             minVertex = i;
         }
     }
-    // std::cout << "min vertex at: (" << vertices[minVertex].x << "," << vertices[minVertex].y << "," << vertices[minVertex].z << ")" << std::endl;
     std::vector<VertexIndex> neighbours = query.getNeighbourhood(minVertex);
     Vector awayFromFace = {-1, 0, 0};
-    Vector fromMinToNeighbour;
     bool foundNeighbour = false;
     VertexIndex maxDotProductIndex = 0;
     float maxDotProduct = -1;
     for (VertexIndex neighbour : neighbours) {
         Vector fromMinToNeighbour = conn(vertices[minVertex], vertices[neighbour]);
-        if (len(fromMinToNeighbour) > 2 * ballRadius) continue; // might not be needed, depends on query configuration
+        if (len(fromMinToNeighbour) > 2 * ballRadius) continue;
         foundNeighbour = true;
-        float dotProduct = awayFromFace * fromMinToNeighbour;
+        float dotProduct = awayFromFace * setMag(fromMinToNeighbour, 1.f);
         if (dotProduct > maxDotProduct) {
             maxDotProductIndex = neighbour;
             maxDotProduct = dotProduct;
         }
     }
     if (!foundNeighbour) {
-        // std::cout << "no neighbour found for initial vertex" << std::endl;
+        std::cout << "no neighbour found for initial vertex" << std::endl;
         return std::nullopt;
     }
-    fromMinToNeighbour = conn(vertices[minVertex], vertices[maxDotProductIndex]);
+    Vector fromMinToNeighbour = conn(vertices[minVertex], vertices[maxDotProductIndex]);
     // find ball position for initial rolling
     Vector pseudoNormal = cross(fromMinToNeighbour, awayFromFace); // this pseudo normal is not normalized (not needed)
-    // std::cout << "pseudo normal z part: " << pseudoNormal.z << std::endl;
     float halfTriangleBaseLength = len(fromMinToNeighbour) * 0.5;
-    // std::cout << "halfTriangleBaseLength: " << halfTriangleBaseLength << std::endl;
     Vector triangleHeight = setMag(cross(pseudoNormal, fromMinToNeighbour), std::sqrt(ballRadius*ballRadius - halfTriangleBaseLength*halfTriangleBaseLength));
-    // std::cout << "triangle height: " << len(triangleHeight) << " and x part: " << triangleHeight.x << std::endl;
     Vertex ballPosition = toVertex(conn({0,0,0}, vertices[minVertex]) + (0.5 * fromMinToNeighbour) + triangleHeight);
+    asserteqf(len(conn(vertices[minVertex], ballPosition)), ballRadius, "inital ball is placed incorrectly");
+    asserteqf(len(conn(vertices[maxDotProductIndex], ballPosition)), ballRadius, "inital ball is placed incorrectly");
     Edge firstEdge = {minVertex, maxDotProductIndex};
-    // std::cout << "trying to roll over (" << vertices[minVertex].x << "," << vertices[minVertex].y << "," << vertices[minVertex].z << "(" << minVertex + 1 << ")) and ("
-    // << vertices[maxDotProductIndex].x << "," << vertices[maxDotProductIndex].y << "," << vertices[maxDotProductIndex].z << "(" << maxDotProductIndex + 1 <<  ")) with ball at: ("
-    // << ballPosition.x << "," << ballPosition.y << "," << ballPosition.z << ")" << std::endl << std::endl;
-    // try rolling the ball
+    // try rolling the ball in one direction
+    Triangle seedTriangle;
     auto optionalVertexIndex = ballPivot(vertices, query, firstEdge, ballPosition, ballRadius);
     if (!optionalVertexIndex) {
-        std::cout << "inital ball rolling touched no vertex" << std::endl;
-        return std::nullopt;
+        // try rolling into other direction 
+        optionalVertexIndex = ballPivot(vertices, query, {firstEdge.j, firstEdge.i}, ballPosition, ballRadius);
+        auto [vertexIndex, newBallPosition] = optionalVertexIndex.value();
+        seedTriangle = {firstEdge.i, firstEdge.j, vertexIndex};
+        return std::make_tuple(seedTriangle, newBallPosition);
+        if (!optionalVertexIndex) {
+            std::cout << "inital ball rolling touched no vertex" << std::endl;
+            return std::nullopt;
+        }
     }
     auto [vertexIndex, newBallPosition] = optionalVertexIndex.value();
-    Triangle seedTriangle = {firstEdge.i, firstEdge.j, vertexIndex};
+    seedTriangle = {firstEdge.j, firstEdge.i, vertexIndex};
     return std::make_tuple(seedTriangle, newBallPosition);
 }
 
 std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Vertices &vertices, BPA::Query query, const Edge edge, const Vertex ballPosition, const float ballRadius) {
+    // TODO move all of this into query
     std::vector<VertexIndex> neighboursI = query.getNeighbourhood(edge.i);
     std::set<VertexIndex> neighboursISet(neighboursI.begin(), neighboursI.end());
     std::vector<VertexIndex> neighboursJ = query.getNeighbourhood(edge.j);
     std::set<VertexIndex> neighboursJSet(neighboursJ.begin(), neighboursJ.end());
     std::set<VertexIndex> neighboursSet;
     std::set_union(neighboursISet.begin(), neighboursISet.end(),
+    
                 neighboursJSet.begin(), neighboursJSet.end(),
                 std::inserter(neighboursSet, neighboursSet.begin()));
     neighboursSet.erase(edge.i);
     neighboursSet.erase(edge.j);
     std::vector<VertexIndex> neighbours(neighboursSet.begin(), neighboursSet.end());
 
-    Vertex midPoint = toVertex(conn({0,0,0}, vertices[edge.i]) + (0.5 * conn(vertices[edge.i], vertices[edge.j])));
-    Vector midPointToBallPosition = conn(midPoint, ballPosition);
-    Vector edgeVector = conn(vertices[edge.i], vertices[edge.j]); // circle plane normal, not normalized
-    float edgeLength = len(edgeVector);
-    float circleRadius = std::sqrt(ballRadius*ballRadius - 0.25*edgeLength*edgeLength);
-    Vector edgeToBallPositionNormal = cross(edgeVector, conn(vertices[edge.i], ballPosition));
+    Vertex e_i = vertices[edge.i];
+    Vertex e_j = vertices[edge.j];
+    Vertex b = ballPosition;
+    float r_b = ballRadius;
+
+    Vector e_i_to_e_j = conn(e_i, e_j); // circle plane normal, not normalized
+    Vertex m = toVertex(conn({0,0,0}, e_i) + (0.5 * e_i_to_e_j));
+    Vector m_to_b_normalized = setMag(conn(m, b), 1.f);
+    float l_e = len(e_i_to_e_j);
+    float r_c = std::sqrt(r_b*r_b - 0.25*l_e*l_e);
+    asserteqf(len(conn(e_i, b)), r_b, "ball is placed incorrectly");
+    asserteqf(len(conn(e_j, b)), r_b, "ball is placed incorrectly");
+    Vector n = setMag(cross(e_i_to_e_j, m_to_b_normalized), 1.f);
+    asserteqf(n*m_to_b_normalized, 0.f, "normal is not perpendicular to plane(e_i, e_j, b)");
     bool foundNeighbour = false;
     VertexIndex maxDotProductIndex = 0;
-    float maxDotProduct = -1;
+    float maxDotProduct = -1.f;
     Vertex newBallPosition;
     for (VertexIndex neighbour : neighbours) {
-        std::vector<Vertex> intersections = intersectCircleSphere(midPoint, circleRadius, edgeVector, vertices[neighbour], ballRadius);
-        for (Vertex intersection : intersections) {
-            Vector midPointToIntersection = conn(midPoint, intersection);
-            if (edgeToBallPositionNormal * midPointToIntersection < 0) continue;
-            float dotProduct = midPointToBallPosition * midPointToIntersection;
-            if (dotProduct > maxDotProduct) {
-                maxDotProduct = dotProduct;
-                maxDotProductIndex = neighbour;
+        std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.f), vertices[neighbour], r_b);
+        for (Vertex i : intersections) {
+            asserteqf(len(conn(e_i,i)), r_b, "intersection is not ball radius away from edgepoint i");
+            asserteqf(len(conn(e_j,i)), r_b, "intersection is not ball radius away from edgepoint j");
+            asserteqf(len(conn(vertices[neighbour],i)), r_b, "intersection is not ball radius away from neighbour");
+            Vector m_to_i_normalized = setMag(conn(m, i), 1.f);
+            if (n * m_to_i_normalized < EPS) continue;
+            float p = m_to_b_normalized * m_to_i_normalized;
+            if (p > maxDotProduct) {
                 foundNeighbour = true;
-                newBallPosition = intersection;
+                maxDotProduct = p;
+                maxDotProductIndex = neighbour;
+                newBallPosition = i;
             }
         }
     }
     if (!foundNeighbour) {
-        //std::cout << "ball touched no vertex" << std::endl;
+        std::cout << "ball touched no vertex, checked " << neighbours.size() << " neighbours" << std::endl;
         return std::nullopt;
     }
+    // std::cout << "min dot product: " << maxDotProduct << std::endl;
     return std::make_tuple(maxDotProductIndex, newBallPosition);
 }
 
 std::vector<Vertex> BPA::intersectCircleSphere(const Vertex circleCenter, const float circleRadius, const Vector circleNormal, const Vertex sphereCenter, const float sphereRadius) {
     std::vector<Vertex> intersections;
     if (len(conn(circleCenter, sphereCenter)) > circleRadius + sphereRadius) {
-        // std::cout << "circle - sphere too far away" << std::endl;
         return intersections;
     }
     // first intersect circle plane with sphere -> we get a second circle in the same plane
     // intersect line with direction of circleNormal through sphereCenter with circle plane
     float scale = conn(sphereCenter, circleCenter) * circleNormal;
-    if (scale > sphereRadius) return intersections;
+    if (std::abs(scale) > sphereRadius) return intersections;
     Vertex intersectionCircleCenter = toVertex(conn({0,0,0}, sphereCenter) + setMag(circleNormal, scale));
     float intersectionCircleRadius = std::sqrt(sphereRadius*sphereRadius - scale*scale);
-    // std::cout << "circle radius: " << circleRadius << std::endl;
-    // std::cout << "intersection circle radius: " << intersectionCircleRadius << std::endl;
+    
+    
     // second we intersect both circles
-    Vector centerToCenter = conn(circleCenter, intersectionCircleCenter);
-    float centersDistance = len(centerToCenter);
-    // std::cout << "centers distance: " << centersDistance << std::endl;
-    if (centersDistance > circleRadius + intersectionCircleRadius) return intersections;
-    float temp = centersDistance*centersDistance - intersectionCircleRadius*intersectionCircleRadius + circleRadius*circleRadius;
-    float distanceCircleCenterToIntersectionCircleCenter = temp / (2*centersDistance);
-    // std::cout << "distance circle center to intersection circle center: " << distanceCircleCenterToIntersectionCircleCenter << std::endl;
-    Vector circleCenterToIntersectionLine = setMag(centerToCenter, distanceCircleCenterToIntersectionCircleCenter);
-    Vertex intersectionLineCenter = toVertex(conn({0,0,0}, circleCenter) + circleCenterToIntersectionLine);
-    float intersectionsDistance = 0.5 / centersDistance * std::sqrt(4*centersDistance*centersDistance*intersectionCircleRadius*intersectionCircleRadius - temp*temp);
-    // std::cout << "intersections distance: " << intersectionsDistance << std::endl;
-    Vertex intersection1 = toVertex(conn({0,0,0}, intersectionLineCenter) + setMag(circleNormal, intersectionsDistance));
-    Vertex intersection2 = toVertex(conn({0,0,0}, intersectionLineCenter) + setMag(circleNormal, -intersectionsDistance));
-    intersections.push_back(intersection1);
-    intersections.push_back(intersection2);
-    // std::cout << "found two intersections: (" << intersection1.x << "," << intersection1.y << "," << intersection1.z << "), (" << intersection2.x << "," << intersection2.y << "," << intersection2.z << ")" << std::endl << std::endl;
+    // we use notation from http://paulbourke.net/geometry/circlesphere/
+
+    Vertex P_0 = circleCenter;
+    float r_0 = circleRadius;
+    Vertex P_1 = intersectionCircleCenter;
+    float r_1 = intersectionCircleRadius;
+
+    Vector P_0_to_P_1 = conn(P_0, P_1);
+    float d = len(P_0_to_P_1);
+    if (d < std::abs(r_0 - r_1)) return intersections;
+    if (d > r_0 + r_1) return intersections;
+    float a = (r_0*r_0 - r_1*r_1 + d*d) / (2*d);
+    Vertex P_2 = toVertex(conn({0,0,0}, P_0) + setMag(P_0_to_P_1, a));
+    if (r_0 - std::abs(a) < EPS) {
+        intersections.push_back(toVertex(conn({0,0,0}, P_2)));
+        return intersections;
+    }
+    float h = std::sqrt(r_0*r_0 - a*a);
+    Vector dir_h = cross(circleNormal, P_0_to_P_1);
+    Vertex i1 = toVertex(conn({0,0,0}, P_2) + setMag(dir_h, h));
+    Vertex i2 = toVertex(conn({0,0,0}, P_2) + setMag(dir_h, -h));
+    asserteqf(len(conn(i1, circleCenter)), circleRadius, "intersection is not circle radius away from circle center");
+    asserteqf(len(conn(i1, sphereCenter)), sphereRadius, "intersection is not sphere radius away from sphere center");
+    intersections.push_back(i1);
+    intersections.push_back(i2);
     return intersections;
 }
