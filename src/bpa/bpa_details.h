@@ -3,6 +3,7 @@
 #include <list>
 #include <optional>
 #include <tuple>
+#include <map>
 
 namespace BPA {
     typedef std::list<Edge> Loop;
@@ -11,15 +12,17 @@ namespace BPA {
             const Vertices &vertices;
             std::list<Loop> front;
             std::list<Edge> boundary;
+            std::map<std::string, Vertex> ballPositions;
             bool areConsecutive(Loop &loop, Loop::iterator edge1Iterator, Loop::iterator edge2Iterator);
             bool boundaryContains(Edge edge);
             bool loopIntegrity(Loop &loop);
+            bool integrity();
         public:
             Front(Vertices &verticies);
-            std::optional<Edge> getActiveEdge();
-            void join(Edge edge, VertexIndex vertexIndex);
+            std::optional<std::tuple<Edge, Vertex>> getActiveEdge();
+            void join(Edge edge, VertexIndex vertexIndex, Vertex ballPosition);
             void glue(Edge edge1, Edge edge2);
-            void insertSeedTriangle(Edge edge1, Edge edge2, Edge edge3);
+            void insertSeedTriangle(Edge edge1, Edge edge2, Edge edge3, Vertex ballPosition);
             bool contains(VertexIndex vertexIndex);
             bool contains(Edge edge);
             void markAsBoundary(Edge edge);

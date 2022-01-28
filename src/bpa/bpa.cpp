@@ -2,6 +2,7 @@
 #include "bpa_details.h"
 
 #include "../helpers/helpers.h"
+#include "../io/io.h"
 
 #include <cassert>
 #include <optional>
@@ -19,7 +20,6 @@ Faces BPA::bpa(Vertices vertices, const float ballRadius) {
     Front front(vertices);
     Query query(vertices, 2*ballRadius);
     std::list<VertexIndex> usedVertices;
-    std::map<std::string, Vertex> ballPositions;
 
     auto notUsed = [&](VertexIndex vertexIndex) {
         return usedVertices.end() == std::find(usedVertices.begin(), usedVertices.end(), vertexIndex);
@@ -45,19 +45,20 @@ Faces BPA::bpa(Vertices vertices, const float ballRadius) {
         usedVertices.push_back(i);
         usedVertices.push_back(j);
         usedVertices.push_back(k);
-        ballPositions[toString({i, j})] = newBallPosition;
-        ballPositions[toString({j, k})] = newBallPosition;
-        ballPositions[toString({k, i})] = newBallPosition;
-        front.insertSeedTriangle({i, j}, {j, k}, {k, i});
+        front.insertSeedTriangle({i, j}, {j, k}, {k, i}, newBallPosition);
     } else {
         // TODO error message instead: no seed triangle found!
         return Helpers::convertFromListToVector<Triangle>(faces);
     }
 
-    while (auto optionalEdge = front.getActiveEdge()) {
-        auto edge = optionalEdge.value();
-        Vertex ballPosition = ballPositions[toString(edge)];
-        std::cout << "ball position: (" << ballPosition.x << "," << ballPosition.y << "," << ballPosition.z << ")" << std::endl;
+    // only for debugging
+    std::string path = "../output/test/test_" + std::to_string(faces.size()) + ".obj";
+    std::vector<Triangle> f = Helpers::convertFromListToVector<Triangle>(faces);
+    IO::writeMesh(path, vertices, f);
+
+    while (auto activeEdge = front.getActiveEdge()) {
+        auto [edge, ballPosition] = activeEdge.value();
+        // std::cout << "ball position: (" << ballPosition.x << "," << ballPosition.y << "," << ballPosition.z << ")" << std::endl;
         std::cout << "pivoting on (" << edge.i << "," << edge.j << ")" << std::endl;
         auto optionalVertexIndex = ballPivot(vertices, query, edge, ballPosition, ballRadius);
         // ballPositions.erase(toString(edge));
@@ -67,23 +68,22 @@ Faces BPA::bpa(Vertices vertices, const float ballRadius) {
                 faces.push_back({edge.i, vertexIndex, edge.j});
                 std::cout << "new triangle: "; printIndexFace(faces.back());
                 usedVertices.push_back(vertexIndex);
-                front.join(edge, vertexIndex);
-                ballPositions[toString({edge.i, vertexIndex})] = newBallPosition;
-                ballPositions[toString({vertexIndex, edge.j})] = newBallPosition;
+                front.join(edge, vertexIndex, newBallPosition);
+                assert(!front.contains(edge));
                 if (front.contains({vertexIndex, edge.i})) {
                     front.glue({edge.i, vertexIndex}, {vertexIndex, edge.i});
-                    // ballPositions.erase(toString({vertexIndex, edge.i}));
-                    // ballPositions.erase(toString({edge.i, vertexIndex}));
                 }
                 if (front.contains({edge.j, vertexIndex})) {
                     front.glue({vertexIndex, edge.j}, {edge.j, vertexIndex});
-                    // ballPositions.erase(toString({vertexIndex, edge.j}));
-                    // ballPositions.erase(toString({edge.j, vertexIndex}));
                 }
+                // only for debugging
+                std::string path = "../output/test/test_" + std::to_string(faces.size()) + ".obj";
+                std::vector<Triangle> f = Helpers::convertFromListToVector<Triangle>(faces);
+                IO::writeMesh(path, vertices, f);
                 continue;
             }
         }
-        std::cout << "marking as boundary" << std::endl;
+        std::cout << ">>>>>    marking as boundary    <<<<<" << std::endl;
         front.markAsBoundary(edge);
     }
 
@@ -97,14 +97,19 @@ std::optional<std::tuple<Triangle, Vertex>> BPA::findSeedTriangle(const Vertices
             minVertex = i;
         }
     }
-    std::vector<VertexIndex> neighbours = query.getNeighbourhood(minVertex);
+    // move this code into query
+    std::vector<VertexIndex> all = query.getNeighbourhood(minVertex);
+    std::set<VertexIndex> neighboursSet(all.begin(), all.end());
+    neighboursSet.erase(minVertex);
+    std::vector<VertexIndex> neighbours(neighboursSet.begin(), neighboursSet.end());
+
     Vector awayFromFace = {-1, 0, 0};
     bool foundNeighbour = false;
     VertexIndex maxDotProductIndex = 0;
     float maxDotProduct = -1;
     for (VertexIndex neighbour : neighbours) {
         Vector fromMinToNeighbour = conn(vertices[minVertex], vertices[neighbour]);
-        if (len(fromMinToNeighbour) > 2 * ballRadius) continue;
+        if (len(fromMinToNeighbour) >= 2 * ballRadius) continue;
         foundNeighbour = true;
         float dotProduct = awayFromFace * setMag(fromMinToNeighbour, 1.f);
         if (dotProduct > maxDotProduct) {
@@ -184,7 +189,7 @@ std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Vertices &ve
             asserteqf(len(conn(e_j,i)), r_b, "intersection is not ball radius away from edgepoint j");
             asserteqf(len(conn(vertices[neighbour],i)), r_b, "intersection is not ball radius away from neighbour");
             Vector m_to_i_normalized = setMag(conn(m, i), 1.f);
-            if (n * m_to_i_normalized < EPS) continue;
+            if (n * m_to_i_normalized < 0.f) continue;
             float p = m_to_b_normalized * m_to_i_normalized;
             if (p > maxDotProduct) {
                 foundNeighbour = true;
