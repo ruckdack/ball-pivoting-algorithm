@@ -57,10 +57,13 @@ Faces BPA::bpa(Vertices vertices, const float ballRadius) {
     IO::writeMesh(path, vertices, f);
 
     while (auto activeEdge = front.getActiveEdge()) {
-        auto [edge, ballPosition] = activeEdge.value();
-        // std::cout << "ball position: (" << ballPosition.x << "," << ballPosition.y << "," << ballPosition.z << ")" << std::endl;
+        auto [edge, ballPosition, correspondingVertex] = activeEdge.value();
+        std::cout << "ball position: (" << ballPosition.x << "," << ballPosition.y << "," << ballPosition.z << ")" << std::endl;
+        // for (Vertex vertex : vertices) {
+        //     assert(len(conn(ballPosition, vertex)) >= ballRadius - EPS);
+        // }
         std::cout << "pivoting on (" << edge.i << "," << edge.j << ")" << std::endl;
-        auto optionalVertexIndex = ballPivot(vertices, query, edge, ballPosition, ballRadius);
+        auto optionalVertexIndex = ballPivot(vertices, query, edge, ballPosition, ballRadius, correspondingVertex);
         // ballPositions.erase(toString(edge));
         if (optionalVertexIndex) {
             auto [vertexIndex, newBallPosition] = optionalVertexIndex.value();
@@ -132,10 +135,10 @@ std::optional<std::tuple<Triangle, Vertex>> BPA::findSeedTriangle(const Vertices
     Edge firstEdge = {minVertex, maxDotProductIndex};
     // try rolling the ball in one direction
     Triangle seedTriangle;
-    auto optionalVertexIndex = ballPivot(vertices, query, firstEdge, ballPosition, ballRadius);
+    auto optionalVertexIndex = ballPivot(vertices, query, firstEdge, ballPosition, ballRadius, std::nullopt);
     if (!optionalVertexIndex) {
         // try rolling into other direction 
-        optionalVertexIndex = ballPivot(vertices, query, {firstEdge.j, firstEdge.i}, ballPosition, ballRadius);
+        optionalVertexIndex = ballPivot(vertices, query, {firstEdge.j, firstEdge.i}, ballPosition, ballRadius, std::nullopt);
         auto [vertexIndex, newBallPosition] = optionalVertexIndex.value();
         seedTriangle = {firstEdge.i, firstEdge.j, vertexIndex};
         return std::make_tuple(seedTriangle, newBallPosition);
@@ -149,7 +152,7 @@ std::optional<std::tuple<Triangle, Vertex>> BPA::findSeedTriangle(const Vertices
     return std::make_tuple(seedTriangle, newBallPosition);
 }
 
-std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Vertices &vertices, BPA::Query query, const Edge edge, const Vertex ballPosition, const float ballRadius) {
+std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Vertices &vertices, BPA::Query query, const Edge edge, const Vertex ballPosition, const float ballRadius, const std::optional<VertexIndex> correspondingVertex) {
     // TODO move all of this into query
     std::vector<VertexIndex> neighboursI = query.getNeighbourhood(edge.i);
     std::set<VertexIndex> neighboursISet(neighboursI.begin(), neighboursI.end());
@@ -183,13 +186,17 @@ std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Vertices &ve
     float maxDotProduct = -1.f;
     Vertex newBallPosition;
     for (VertexIndex neighbour : neighbours) {
+        if (correspondingVertex.has_value() && correspondingVertex.value() == neighbour) {
+            continue;
+        }
         std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.f), vertices[neighbour], r_b);
         for (Vertex i : intersections) {
             asserteqf(len(conn(e_i,i)), r_b, "intersection is not ball radius away from edgepoint i");
             asserteqf(len(conn(e_j,i)), r_b, "intersection is not ball radius away from edgepoint j");
             asserteqf(len(conn(vertices[neighbour],i)), r_b, "intersection is not ball radius away from neighbour");
             Vector m_to_i_normalized = setMag(conn(m, i), 1.f);
-            if (n * m_to_i_normalized < 0.f) continue;
+            float n_dot_m_to_i_normalized = n * m_to_i_normalized;
+            if (n_dot_m_to_i_normalized < -EPS) continue;
             float p = m_to_b_normalized * m_to_i_normalized;
             if (p > maxDotProduct) {
                 foundNeighbour = true;
@@ -203,7 +210,6 @@ std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Vertices &ve
         std::cout << "ball touched no vertex, checked " << neighbours.size() << " neighbours" << std::endl;
         return std::nullopt;
     }
-    // std::cout << "min dot product: " << maxDotProduct << std::endl;
     return std::make_tuple(maxDotProductIndex, newBallPosition);
 }
 

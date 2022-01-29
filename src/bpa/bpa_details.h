@@ -13,13 +13,15 @@ namespace BPA {
             std::list<Loop> front;
             std::list<Edge> boundary;
             std::map<std::string, Vertex> ballPositions;
+            std::map<std::string, VertexIndex> correspondingTriangle;
             bool areConsecutive(Loop &loop, Loop::iterator edge1Iterator, Loop::iterator edge2Iterator);
             bool boundaryContains(Edge edge);
             bool loopIntegrity(Loop &loop);
             bool integrity();
         public:
             Front(Vertices &verticies);
-            std::optional<std::tuple<Edge, Vertex>> getActiveEdge();
+            // returns the active edge, the ball position and the corresponding vertex to form a triangle (to prevent self-rolling)
+            std::optional<std::tuple<Edge, Vertex, VertexIndex>> getActiveEdge();
             void join(Edge edge, VertexIndex vertexIndex, Vertex ballPosition);
             void glue(Edge edge1, Edge edge2);
             void insertSeedTriangle(Edge edge1, Edge edge2, Edge edge3, Vertex ballPosition);
@@ -36,6 +38,6 @@ namespace BPA {
             std::vector<VertexIndex> getNeighbourhood(VertexIndex vertexIndex);
     };
     std::optional<std::tuple<Triangle, Vertex>> findSeedTriangle(const Vertices &vertices, Query query, const float ballRadius);    
-    std::optional<std::tuple<VertexIndex, Vertex>> ballPivot(const Vertices &vertices, Query query, const Edge edge, const Vertex ballPosition, const float ballRadius);
+    std::optional<std::tuple<VertexIndex, Vertex>> ballPivot(const Vertices &vertices, Query query, const Edge edge, const Vertex ballPosition, const float ballRadius, const std::optional<VertexIndex> correspondingVertex);
     std::vector<Vertex> intersectCircleSphere(const Vertex circleCenter, const float circleRadius, const Vector circleNormal, const Vertex sphereCenter, const float sphereRadius);
 }

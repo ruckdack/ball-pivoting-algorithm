@@ -8,11 +8,11 @@ using namespace BPA;
 
 Front::Front(Vertices &v) : vertices(v) {}
 
-std::optional<std::tuple<Edge, Vertex>> Front::getActiveEdge() {
+std::optional<std::tuple<Edge, Vertex, VertexIndex>> Front::getActiveEdge() {
     for (Loop loop : front) {
         for (Edge edge : loop) {
             if (!boundaryContains(edge)) {
-                return std::make_tuple(edge, ballPositions[toString(edge)]);
+                return std::make_tuple(edge, ballPositions[toString(edge)], correspondingTriangle[toString(edge)]);
             }
         }
     }
@@ -20,16 +20,19 @@ std::optional<std::tuple<Edge, Vertex>> Front::getActiveEdge() {
     return std::nullopt;
 }
 
+// some ballPosition and correspondingTriangle entries could be deleted here
 void Front::join(Edge edge, VertexIndex vertexIndex, Vertex ballPosition) {
     for (Loop &loop : front) {
         auto edgeIter = std::find(loop.begin(), loop.end(), edge);
         if (edgeIter != loop.end()) {
             Edge edge1 = {edge.i, vertexIndex};
             loop.insert(edgeIter, edge1);
-            ballPositions[toString(edge1)];
+            ballPositions[toString(edge1)] = ballPosition;
+            correspondingTriangle[toString(edge1)] = edge.j;
             Edge edge2 = {vertexIndex, edge.j};
             loop.insert(edgeIter, edge2);
-            ballPositions[toString(edge2)];
+            ballPositions[toString(edge2)] = ballPosition;
+            correspondingTriangle[toString(edge2)] = edge.i;
             loop.erase(edgeIter);
             assert(integrity());
             assert(!contains(edge));
@@ -108,11 +111,17 @@ void Front::glue(Edge edge1, Edge edge2) {
 }
 
 void Front::insertSeedTriangle(Edge edge1, Edge edge2, Edge edge3, Vertex ballPosition) {
+    assert(edge1.j == edge2.i);
+    assert(edge2.j == edge3.i);
+    assert(edge3.j == edge1.i);
     Loop loop = { edge1, edge2, edge3 };
     front.push_back(loop);
     ballPositions[toString(edge1)] = ballPosition;
     ballPositions[toString(edge2)] = ballPosition;
     ballPositions[toString(edge3)] = ballPosition;
+    correspondingTriangle[toString(edge1)] = edge2.j;
+    correspondingTriangle[toString(edge2)] = edge3.j;
+    correspondingTriangle[toString(edge3)] = edge1.j;
     assert(integrity());
 }
 
