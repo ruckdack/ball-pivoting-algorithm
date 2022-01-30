@@ -28,14 +28,17 @@ namespace BPA {
             bool contains(VertexIndex vertexIndex);
             bool contains(Edge edge);
             void markAsBoundary(Edge edge);
+            bool nonemptyBoundary();
     };
     class Query {
         private:
             const Vertices &vertices;
             const float voxelSize;
+            std::map<std::tuple<int64_t, int64_t, int64_t>, std::vector<VertexIndex>> grid;
         public:
             Query(Vertices &vertices, float voxelSize);
             std::vector<VertexIndex> getNeighbourhood(VertexIndex vertexIndex);
+            std::vector<VertexIndex> getNeighbourhood(Edge edge);
     };
     std::optional<std::tuple<Triangle, Vertex>> findSeedTriangle(const Vertices &vertices, Query query, const float ballRadius);    
     std::optional<std::tuple<VertexIndex, Vertex>> ballPivot(const Vertices &vertices, Query query, const Edge edge, const Vertex ballPosition, const float ballRadius, const std::optional<VertexIndex> correspondingVertex);

@@ -48,7 +48,8 @@ Faces BPA::bpa(Vertices vertices, const float ballRadius) {
         front.insertSeedTriangle({i, j}, {j, k}, {k, i}, newBallPosition);
     } else {
         // TODO error message instead: no seed triangle found!
-        return Helpers::convertFromListToVector<Triangle>(faces);
+        std::cout << "found no seed triangle" << std::endl;
+        return Faces();
     }
 
     // only for debugging
@@ -58,17 +59,22 @@ Faces BPA::bpa(Vertices vertices, const float ballRadius) {
 
     while (auto activeEdge = front.getActiveEdge()) {
         auto [edge, ballPosition, correspondingVertex] = activeEdge.value();
-        std::cout << "ball position: (" << ballPosition.x << "," << ballPosition.y << "," << ballPosition.z << ")" << std::endl;
-        // for (Vertex vertex : vertices) {
-        //     assert(len(conn(ballPosition, vertex)) >= ballRadius - EPS);
-        // }
-        std::cout << "pivoting on (" << edge.i << "," << edge.j << ")" << std::endl;
+        // std::cout << "ball position: (" << ballPosition.x << "," << ballPosition.y << "," << ballPosition.z << ")" << std::endl;
+        for (Vertex vertex : vertices) {
+            // checks if ball contains any vertex
+            assert(len(conn(ballPosition, vertex)) >= ballRadius - EPS);
+        }
+        // std::cout << "pivoting on (" << edge.i << "," << edge.j << ")" << std::endl;
         auto optionalVertexIndex = ballPivot(vertices, query, edge, ballPosition, ballRadius, correspondingVertex);
         // ballPositions.erase(toString(edge));
         if (optionalVertexIndex) {
             auto [vertexIndex, newBallPosition] = optionalVertexIndex.value();
             if (notUsed(vertexIndex) || front.contains(vertexIndex)) {
-                faces.push_back({edge.i, vertexIndex, edge.j});
+                Triangle newFace = {edge.i, vertexIndex, edge.j};
+                for (Triangle face : faces) {
+                    assert(face != newFace);
+                }
+                faces.push_back(newFace);
                 std::cout << "new triangle: "; printIndexFace(faces.back());
                 usedVertices.push_back(vertexIndex);
                 front.join(edge, vertexIndex, newBallPosition);
@@ -86,8 +92,11 @@ Faces BPA::bpa(Vertices vertices, const float ballRadius) {
                 continue;
             }
         }
-        std::cout << ">>>>>    marking as boundary    <<<<<" << std::endl;
+        std::cout << "marking as boundary" << std::endl;
         front.markAsBoundary(edge);
+    }
+    if (front.nonemptyBoundary()) {
+        std::cout << "boundary was found" << std::endl;
     }
 
     return Helpers::convertFromListToVector<Triangle>(faces);
@@ -100,11 +109,7 @@ std::optional<std::tuple<Triangle, Vertex>> BPA::findSeedTriangle(const Vertices
             minVertex = i;
         }
     }
-    // move this code into query
-    std::vector<VertexIndex> all = query.getNeighbourhood(minVertex);
-    std::set<VertexIndex> neighboursSet(all.begin(), all.end());
-    neighboursSet.erase(minVertex);
-    std::vector<VertexIndex> neighbours(neighboursSet.begin(), neighboursSet.end());
+    std::vector<VertexIndex> neighbours = query.getNeighbourhood(minVertex);
 
     Vector awayFromFace = {-1, 0, 0};
     bool foundNeighbour = false;
@@ -139,13 +144,13 @@ std::optional<std::tuple<Triangle, Vertex>> BPA::findSeedTriangle(const Vertices
     if (!optionalVertexIndex) {
         // try rolling into other direction 
         optionalVertexIndex = ballPivot(vertices, query, {firstEdge.j, firstEdge.i}, ballPosition, ballRadius, std::nullopt);
-        auto [vertexIndex, newBallPosition] = optionalVertexIndex.value();
-        seedTriangle = {firstEdge.i, firstEdge.j, vertexIndex};
-        return std::make_tuple(seedTriangle, newBallPosition);
         if (!optionalVertexIndex) {
             std::cout << "inital ball rolling touched no vertex" << std::endl;
             return std::nullopt;
         }
+        auto [vertexIndex, newBallPosition] = optionalVertexIndex.value();
+        seedTriangle = {firstEdge.i, firstEdge.j, vertexIndex};
+        return std::make_tuple(seedTriangle, newBallPosition);
     }
     auto [vertexIndex, newBallPosition] = optionalVertexIndex.value();
     seedTriangle = {firstEdge.j, firstEdge.i, vertexIndex};
@@ -153,19 +158,7 @@ std::optional<std::tuple<Triangle, Vertex>> BPA::findSeedTriangle(const Vertices
 }
 
 std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Vertices &vertices, BPA::Query query, const Edge edge, const Vertex ballPosition, const float ballRadius, const std::optional<VertexIndex> correspondingVertex) {
-    // TODO move all of this into query
-    std::vector<VertexIndex> neighboursI = query.getNeighbourhood(edge.i);
-    std::set<VertexIndex> neighboursISet(neighboursI.begin(), neighboursI.end());
-    std::vector<VertexIndex> neighboursJ = query.getNeighbourhood(edge.j);
-    std::set<VertexIndex> neighboursJSet(neighboursJ.begin(), neighboursJ.end());
-    std::set<VertexIndex> neighboursSet;
-    std::set_union(neighboursISet.begin(), neighboursISet.end(),
-    
-                neighboursJSet.begin(), neighboursJSet.end(),
-                std::inserter(neighboursSet, neighboursSet.begin()));
-    neighboursSet.erase(edge.i);
-    neighboursSet.erase(edge.j);
-    std::vector<VertexIndex> neighbours(neighboursSet.begin(), neighboursSet.end());
+    std::vector<VertexIndex> neighbours = query.getNeighbourhood(edge);
 
     Vertex e_i = vertices[edge.i];
     Vertex e_j = vertices[edge.j];

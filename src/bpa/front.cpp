@@ -200,3 +200,7 @@ bool Front::integrity() {
     }
     return true;
 }
+
+bool Front::nonemptyBoundary() {
+    return boundary.size() != 0;
+}
