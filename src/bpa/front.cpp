@@ -9,6 +9,7 @@ using namespace BPA;
 Front::Front(Vertices &v) : vertices(v) {}
 
 std::optional<std::tuple<Edge, Vertex, VertexIndex>> Front::getActiveEdge() {
+    assert(integrity());
     for (Loop loop : front) {
         for (Edge edge : loop) {
             if (!boundaryContains(edge)) {
@@ -22,6 +23,7 @@ std::optional<std::tuple<Edge, Vertex, VertexIndex>> Front::getActiveEdge() {
 
 // some ballPosition and correspondingTriangle entries could be deleted here
 void Front::join(Edge edge, VertexIndex vertexIndex, Vertex ballPosition) {
+    assert(integrity());
     for (Loop &loop : front) {
         auto edgeIter = std::find(loop.begin(), loop.end(), edge);
         if (edgeIter != loop.end()) {

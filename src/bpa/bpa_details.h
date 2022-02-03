@@ -42,5 +42,6 @@ namespace BPA {
     };
     std::optional<std::tuple<Triangle, Vertex>> findSeedTriangle(const Vertices &vertices, Query query, const float ballRadius);    
     std::optional<std::tuple<VertexIndex, Vertex>> ballPivot(const Vertices &vertices, Query query, const Edge edge, const Vertex ballPosition, const float ballRadius, const std::optional<VertexIndex> correspondingVertex);
+    float calcStartingScalarProduct(Vertex edgeI, Vertex edgeJ, Vertex correspondingVertex, Vertex ballPosition, float maxRollingAngle);
     std::vector<Vertex> intersectCircleSphere(const Vertex circleCenter, const float circleRadius, const Vector circleNormal, const Vertex sphereCenter, const float sphereRadius);
 }

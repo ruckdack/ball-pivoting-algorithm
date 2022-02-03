@@ -21,6 +21,8 @@ Faces BPA::bpa(Vertices vertices, const float ballRadius) {
     Query query(vertices, 2*ballRadius);
     std::list<VertexIndex> usedVertices;
 
+    bool tracePath = true;
+
     auto notUsed = [&](VertexIndex vertexIndex) {
         return usedVertices.end() == std::find(usedVertices.begin(), usedVertices.end(), vertexIndex);
     };
@@ -53,18 +55,15 @@ Faces BPA::bpa(Vertices vertices, const float ballRadius) {
     }
 
     // only for debugging
-    std::string path = "../output/test/test_" + std::to_string(faces.size()) + ".obj";
-    std::vector<Triangle> f = Helpers::convertFromListToVector<Triangle>(faces);
-    IO::writeMesh(path, vertices, f);
+    if (tracePath) {
+        std::string path = "../output/test/test_" + std::to_string(faces.size()) + ".obj";
+        std::vector<Triangle> f = Helpers::convertFromListToVector<Triangle>(faces);
+        IO::writeMesh(path, vertices, f);
+    }
 
     while (auto activeEdge = front.getActiveEdge()) {
         auto [edge, ballPosition, correspondingVertex] = activeEdge.value();
-        // std::cout << "ball position: (" << ballPosition.x << "," << ballPosition.y << "," << ballPosition.z << ")" << std::endl;
-        for (Vertex vertex : vertices) {
-            // checks if ball contains any vertex
-            assert(len(conn(ballPosition, vertex)) >= ballRadius - EPS);
-        }
-        // std::cout << "pivoting on (" << edge.i << "," << edge.j << ")" << std::endl;
+        std::cout << "pivoting on (" << edge.i << "," << edge.j << ")" << std::endl;
         auto optionalVertexIndex = ballPivot(vertices, query, edge, ballPosition, ballRadius, correspondingVertex);
         // ballPositions.erase(toString(edge));
         if (optionalVertexIndex) {
@@ -86,9 +85,11 @@ Faces BPA::bpa(Vertices vertices, const float ballRadius) {
                     front.glue({vertexIndex, edge.j}, {edge.j, vertexIndex});
                 }
                 // only for debugging
-                std::string path = "../output/test/test_" + std::to_string(faces.size()) + ".obj";
-                std::vector<Triangle> f = Helpers::convertFromListToVector<Triangle>(faces);
-                IO::writeMesh(path, vertices, f);
+                if (tracePath) {
+                    std::string path = "../output/test/test_" + std::to_string(faces.size()) + ".obj";
+                    std::vector<Triangle> f = Helpers::convertFromListToVector<Triangle>(faces);
+                    IO::writeMesh(path, vertices, f);
+                }
                 continue;
             }
         }
@@ -142,15 +143,17 @@ std::optional<std::tuple<Triangle, Vertex>> BPA::findSeedTriangle(const Vertices
     Triangle seedTriangle;
     auto optionalVertexIndex = ballPivot(vertices, query, firstEdge, ballPosition, ballRadius, std::nullopt);
     if (!optionalVertexIndex) {
-        // try rolling into other direction 
-        optionalVertexIndex = ballPivot(vertices, query, {firstEdge.j, firstEdge.i}, ballPosition, ballRadius, std::nullopt);
-        if (!optionalVertexIndex) {
-            std::cout << "inital ball rolling touched no vertex" << std::endl;
-            return std::nullopt;
-        }
-        auto [vertexIndex, newBallPosition] = optionalVertexIndex.value();
-        seedTriangle = {firstEdge.i, firstEdge.j, vertexIndex};
-        return std::make_tuple(seedTriangle, newBallPosition);
+        std::cout << "inital ball rolling touched no vertex" << std::endl;
+        return std::nullopt;
+        // // try rolling into other direction 
+        // optionalVertexIndex = ballPivot(vertices, query, {firstEdge.j, firstEdge.i}, ballPosition, ballRadius, std::nullopt);
+        // if (!optionalVertexIndex) {
+        //     std::cout << "inital ball rolling touched no vertex" << std::endl;
+        //     return std::nullopt;
+        // }
+        // auto [vertexIndex, newBallPosition] = optionalVertexIndex.value();
+        // seedTriangle = {firstEdge.i, firstEdge.j, vertexIndex};
+        // return std::make_tuple(seedTriangle, newBallPosition);
     }
     auto [vertexIndex, newBallPosition] = optionalVertexIndex.value();
     seedTriangle = {firstEdge.j, firstEdge.i, vertexIndex};
@@ -158,10 +161,12 @@ std::optional<std::tuple<Triangle, Vertex>> BPA::findSeedTriangle(const Vertices
 }
 
 std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Vertices &vertices, BPA::Query query, const Edge edge, const Vertex ballPosition, const float ballRadius, const std::optional<VertexIndex> correspondingVertex) {
+    const float MAX_ROLLING_ANGLE = 270.f;
+    
     std::vector<VertexIndex> neighbours = query.getNeighbourhood(edge);
-
     Vertex e_i = vertices[edge.i];
     Vertex e_j = vertices[edge.j];
+    // std::cout << "rolling on: (" << e_i.x << "," << e_i.y << "," << e_i.z << ") and (" << e_j.x << "," << e_j.y << "," << e_j.z << ")" << std::endl;
     Vertex b = ballPosition;
     float r_b = ballRadius;
 
@@ -175,8 +180,9 @@ std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Vertices &ve
     Vector n = setMag(cross(e_i_to_e_j, m_to_b_normalized), 1.f);
     asserteqf(n*m_to_b_normalized, 0.f, "normal is not perpendicular to plane(e_i, e_j, b)");
     bool foundNeighbour = false;
-    VertexIndex maxDotProductIndex = 0;
-    float maxDotProduct = -1.f;
+    VertexIndex newVertexIndex = 0;
+    float maxDotProduct = correspondingVertex.has_value() ? calcStartingScalarProduct(e_i, e_j, vertices[correspondingVertex.value()], b, MAX_ROLLING_ANGLE) : -3.f;
+    std::cout << "max dot prod: " << maxDotProduct << std::endl;
     Vertex newBallPosition;
     for (VertexIndex neighbour : neighbours) {
         if (correspondingVertex.has_value() && correspondingVertex.value() == neighbour) {
@@ -189,12 +195,20 @@ std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Vertices &ve
             asserteqf(len(conn(vertices[neighbour],i)), r_b, "intersection is not ball radius away from neighbour");
             Vector m_to_i_normalized = setMag(conn(m, i), 1.f);
             float n_dot_m_to_i_normalized = n * m_to_i_normalized;
-            if (n_dot_m_to_i_normalized < -EPS) continue;
             float p = m_to_b_normalized * m_to_i_normalized;
+            if (p >= 1-EPS) {
+                // ball cannot stay on same position
+                assert(false);
+                continue;
+            }
+            if (n_dot_m_to_i_normalized < -EPS) {
+                // in this case ball is rotated more than 180°
+                p = -p - 2.f;
+            }
             if (p > maxDotProduct) {
                 foundNeighbour = true;
                 maxDotProduct = p;
-                maxDotProductIndex = neighbour;
+                newVertexIndex = neighbour;
                 newBallPosition = i;
             }
         }
@@ -203,10 +217,42 @@ std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Vertices &ve
         std::cout << "ball touched no vertex, checked " << neighbours.size() << " neighbours" << std::endl;
         return std::nullopt;
     }
-    return std::make_tuple(maxDotProductIndex, newBallPosition);
+    std::cout << "new dot prod: " << maxDotProduct << std::endl;
+    std::cout << "new vertex: (" << vertices[newVertexIndex].x << "," << vertices[newVertexIndex].y << "," << vertices[newVertexIndex].z << "), new ball pos: (" << newBallPosition.x << "," << newBallPosition.y << "," << newBallPosition.z << ")" << std::endl;
+    for (VertexIndex neighbour : neighbours) {
+        if (neighbour == newVertexIndex) continue;
+        if (std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius) < EPS) {
+            std::cout << "neighbour ON ball: (" << vertices[neighbour].x << "," << vertices[neighbour].y << "," << vertices[neighbour].z << ")" << std::endl;
+        }
+        assert(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius) >= EPS); // checks if other vertices lay on ball -> happens with parallelograms
+        if (len(conn(newBallPosition, vertices[neighbour])) <= ballRadius - EPS) {
+            std::cout << "neighbour IN ball: (" << vertices[neighbour].x << "," << vertices[neighbour].y << "," << vertices[neighbour].z << ")" << std::endl;
+        }
+        assert(len(conn(newBallPosition, vertices[neighbour])) > ballRadius + EPS); // checks if other vertices lay inside the ball -> should never happen
+    }
+    return std::make_tuple(newVertexIndex, newBallPosition);
+}
+
+float BPA::calcStartingScalarProduct(Vertex edgeI, Vertex edgeJ, Vertex correspondingVertex, Vertex ballPosition, float maxRollingAngle) {
+    Vector edgeIToEdgeJ = conn(edgeI, edgeJ);
+    Vector planeNormal = setMag(cross(edgeIToEdgeJ, conn(edgeI, correspondingVertex)), 1.f);
+    Vertex midPoint = toVertex(conn({0,0,0}, edgeI) + (0.5 * edgeIToEdgeJ));
+    Vector midPointToBallPos = setMag(conn(midPoint, ballPosition), 1.f);
+    // could be optimized: is it possible to only calculate in scalar product? 
+    float alpha = 90.f - std::acos(midPointToBallPos * planeNormal);
+    float maxPossibleAngle = 360.f - 2*alpha;
+    float clippedAngle = std::min(maxPossibleAngle, maxRollingAngle);
+    if (clippedAngle > 180.f) return -std::cos(clippedAngle) - 2.f;
+    return std::cos(clippedAngle);
 }
 
 std::vector<Vertex> BPA::intersectCircleSphere(const Vertex circleCenter, const float circleRadius, const Vector circleNormal, const Vertex sphereCenter, const float sphereRadius) {
+    assert(!std::isnan(circleCenter.x) && !std::isnan(circleCenter.y) && !std::isnan(circleCenter.z));
+    assert(!std::isnan(sphereCenter.x) && !std::isnan(sphereCenter.y) && !std::isnan(sphereCenter.z));
+    assert(!std::isnan(circleNormal.x) && !std::isnan(circleNormal.y) && !std::isnan(circleNormal.z));
+    assert(circleRadius > 0.f);
+    assert(sphereRadius > 0.f);
+    asserteqf(len(circleNormal), 1.f, "circle normal is not normalized");
     std::vector<Vertex> intersections;
     if (len(conn(circleCenter, sphereCenter)) > circleRadius + sphereRadius) {
         return intersections;
