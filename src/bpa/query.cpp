@@ -1,14 +1,14 @@
-#include "bpa_details.h"
+#include "query.h"
 
 #include <set>
 #include <cmath>
+#include <cassert>
 #include <iostream>
 
-using namespace BPA;
-
-static const std::vector<int64_t> OFFSETS = {-1, 0, 1};
-
-BPA::Query::Query(Vertices &v, float size) : vertices(v), voxelSize(size) {
+Query::Query(const Vertices &v, const float size)
+: OFFSETS({-1, 0, 1})
+, vertices(v)
+, voxelSize(size) {
     for (VertexIndex i = 0; i < vertices.size(); i++) {
         Vertex v = vertices[i];
         int64_t gridX = std::floor(v.x / voxelSize);
@@ -47,6 +47,7 @@ std::vector<VertexIndex> Query::getNeighbourhood(VertexIndex vertexIndex) {
             }
         }
     }
+    assert(std::find(neighbours.begin(), neighbours.end(), vertexIndex) == neighbours.end());
     return neighbours;
 }
 
@@ -73,6 +74,8 @@ std::vector<VertexIndex> Query::getNeighbourhood(Edge edge) {
             }
         }
     }
+    assert(std::find(neighbours.begin(), neighbours.end(), edge.i) == neighbours.end());
+    assert(std::find(neighbours.begin(), neighbours.end(), edge.j) == neighbours.end());
     return neighbours;
 }
 

@@ -25,7 +25,7 @@ Vertices IO::readVertices(std::string path) {
     return vertices;
 }
 
-void IO::writeMesh(std::string path, Vertices &vertices, Faces &faces) {
+void IO::writeMesh(std::string path, Vertices &vertices, std::list<Triangle> &faces) {
     std::ofstream file(path);
     if (!file.is_open()) {
         throw std::runtime_error("Creating file failed.");

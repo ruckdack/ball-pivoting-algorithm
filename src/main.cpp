@@ -6,22 +6,46 @@
 #include <iostream>
 #include <string>
 
+#define DEBUG true
+
 int main(int argc, char *argv[]) {
-    if (argc > 4) {
+    size_t numOfArgs = 4;
+    if (argc > numOfArgs + 1) {
         std::cout << "Too many arguments." << std::endl;
         return 0;
-    } else if (argc < 4) {
+    } else if (argc < numOfArgs + 1) {
         std::cout << "Not enough arguments." << std::endl;
         return 0;
     }
     float ballRadius = std::stof(argv[1]);
-    std::string inputPath(argv[2]);
-    std::string outputPath(argv[3]);
-    if (!Helpers::pathSyntaxValid(inputPath) || !Helpers::pathSyntaxValid(outputPath)) {
-        throw std::runtime_error("Wrong path syntax.");
+    float maxRollingAngle = std::stof(argv[2]);
+    if (maxRollingAngle < 0.f) {
+        std::cout << "Max rolling angle cannot be negative." << std::endl;
+        return 0;
+    } else if (maxRollingAngle >= 360.f) {
+        std::cout << "Max rolling angle cannot be larger than 360°." << std::endl;
+        return 0;
     }
+    std::string inputPath(argv[3]);
+    std::string outputPath(argv[4]);
+    if (!Helpers::pathSyntaxValid(inputPath) || !Helpers::pathSyntaxValid(outputPath)) {
+        std::cout << "Wrong path syntax." << std::endl;
+    }
+    // add try catch
     Vertices vertices = IO::readVertices(inputPath);
-    Faces faces = BPA::bpa(vertices, ballRadius);
+    BPA bpa(vertices, ballRadius, maxRollingAngle);
+    size_t counter = 1;
+    while (!bpa.isDone()) {
+        bpa.step();
+        // only for debugging
+        if (DEBUG) {
+            std::list<Triangle> faces = bpa.getFaces();
+            std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
+            IO::writeMesh(path, vertices, faces);
+            counter++;
+        }
+    }
+    std::list<Triangle> faces = bpa.getFaces();
     IO::writeMesh(outputPath, vertices, faces);
     return 0;
 }

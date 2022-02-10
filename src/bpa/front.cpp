@@ -1,12 +1,11 @@
-#include "bpa_details.h"
+#include "bpa.h"
 #include "../helpers/helpers.h"
-
-using namespace BPA;
 
 #include <cassert>
 #include <iostream>
 
-Front::Front(Vertices &v) : vertices(v) {}
+Front::Front(const Vertices &v) 
+: vertices(v) {}
 
 std::optional<std::tuple<Edge, Vertex, VertexIndex>> Front::getActiveEdge() {
     assert(integrity());

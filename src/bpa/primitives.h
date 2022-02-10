@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <string>
+#include <list>
 
 struct Vertex {
     float x;
@@ -31,8 +32,7 @@ struct Vector {
 };
 
 typedef std::vector<Vertex> Vertices;
-typedef std::vector<Edge> Edges;
-typedef std::vector<Triangle> Faces;
+typedef std::list<Edge> Loop;
 
 std::string toString(const Edge edge);
 

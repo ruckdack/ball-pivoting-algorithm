@@ -7,5 +7,5 @@
 
 namespace IO {
     Vertices readVertices(std::string path);
-    void writeMesh(std::string path, Vertices &vertices, Faces &faces);
+    void writeMesh(std::string path, Vertices &vertices, std::list<Triangle> &faces);
 }
