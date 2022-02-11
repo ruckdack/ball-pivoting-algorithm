@@ -14,6 +14,7 @@ class ObjLoader(object):
         self.edges = []
         self.max_corners = 0
         self.longest_edge = 0
+        self.circumscribed_circle_radius = 0
         try:
             f = open(fileName)
             for line in f:
@@ -42,7 +43,12 @@ class ObjLoader(object):
                     self.faces.append(tuple(face))
 
             f.close()
+            if len(self.faces) == 0:
+                print('no faces found, cannot compute edge length')
+                exit()
             self.generate_edges_from_faces()
+            self.find_longest_edge()
+            self.calc_circumscribed_circle_radius_from_edge()
         except IOError:
             print('.obj file not found.')
     
@@ -66,18 +72,15 @@ class ObjLoader(object):
             edge_len = math.sqrt((v1a-v2a)**2 + (v1b-v2b)**2 + (v1c-v2c)**2)
             current_longest = max(current_longest, edge_len)
         self.longest_edge = current_longest
-        return current_longest
 
     def calc_circumscribed_circle_radius_from_edge(self):
-        return self.longest_edge / 2 * csc(math.pi / self.max_corners)
+        self.circumscribed_circle_radius = self.longest_edge / 2 * csc(math.pi / self.max_corners)
 
 if len(sys.argv) != 2:
     print('wrong args')
     exit()
 obj = ObjLoader(sys.argv[1])
 #obj.print()
-longest_edge = obj.find_longest_edge()
-print('longest edge: ', longest_edge)
-radius = obj.calc_circumscribed_circle_radius_from_edge()
-print('radius: ', radius)
+print('longest edge: ', obj.longest_edge)
+print('radius: ', obj.circumscribed_circle_radius)
 
