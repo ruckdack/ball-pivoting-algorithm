@@ -33,9 +33,9 @@ class ObjLoader(object):
                     face = []
                     for item in range(string.count(' ')):
                         if string.find(' ', i) == -1:
-                            face.append(int(string[i:-1])-1)
+                            face.append(int(string[i:-1].split('/')[0])-1)
                             break
-                        face.append(int(string[i:string.find(' ', i)])-1)
+                        face.append(int(string[i:string.find(' ', i)].split('/')[0])-1)
                         i = string.find(' ', i) + 1
                     ##
                     self.max_corners = max(len(face), self.max_corners)
