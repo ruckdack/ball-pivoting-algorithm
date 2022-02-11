@@ -16,9 +16,8 @@
 #define asserteq(val1, val2, msg) assert(((void)msg, val1 == val2))
 #define asserteqf(val1, val2, msg) assert(((void)msg, std::abs(val1 - val2) < EPS))
 
-BPA::BPA(const Vertices &v, const float ballRad, const float maxRollingAngle)
-: MAX_ROLLING_ANGLE(maxRollingAngle * M_PI / 180.f)
-, vertices(v)
+BPA::BPA(const Vertices &v, const float ballRad)
+: vertices(v)
 , ballRadius(ballRad)
 , query(vertices, 2*ballRadius)
 , front(vertices)
@@ -41,7 +40,7 @@ void BPA::step() {
         if (auto optionalSeedTriangles = findSeedTriangles()) {
             auto [firstEdge, vertexIndicees, newBallPosition] = optionalSeedTriangles.value();
             assert(vertexIndicees.size() > 0);
-            auto [_, firstIndex] = triangulatePlanar(firstEdge, vertexIndicees)[0];
+            auto [_, firstIndex] = triangulatePlanar(firstEdge, vertexIndicees)[0]; // we assert planar vertices
             Triangle seedTriangle = {firstEdge.j, firstEdge.i, firstIndex};
             faces.push_back(seedTriangle);
             std::cout << "inital triangle: "; printIndexFace(faces.back());
@@ -90,7 +89,7 @@ std::list<Triangle> BPA::getFaces() {
 bool BPA::multiInsert(Edge edge, std::vector<VertexIndex> vertexIndicees, Vertex ballPosition) {
     assert(vertexIndicees.size() > 0);
     bool foundValidVertex = false;
-    for (auto [subEdge, vertexIndex] : triangulatePlanar(edge, vertexIndicees)) {
+    for (auto [subEdge, vertexIndex] : triangulatePlanar(edge, vertexIndicees)) { // we assert planar vertices
         if (!used(vertexIndex) || front.contains(vertexIndex)) {
             Triangle newFace = {subEdge.i, vertexIndex, subEdge.j};
             for (Triangle face : faces) {
@@ -160,17 +159,15 @@ std::optional<std::tuple<Edge, std::vector<VertexIndex>, Vertex>> BPA::findSeedT
     // try rolling the ball in one direction
     auto optionalVertexIndicees = ballPivot(firstEdge, ballPosition, std::nullopt);
     if (!optionalVertexIndicees.has_value()) {
-        std::cout << "inital ball rolling touched no vertex" << std::endl;
-        return std::nullopt;
-        // // TODO try rolling into other direction -> max starting scalar product
-        // vertexIndicees = ballPivot(vertices, query, {firstEdge.j, firstEdge.i}, ballPosition, ballRadius, std::nullopt);
-        // if (!vertexIndicees) {
-        //     std::cout << "inital ball rolling touched no vertex" << std::endl;
-        //     return std::nullopt;
-        // }
-        // auto [vertexIndex, newBallPosition] = vertexIndicees.value();
-        // seedTriangle = {firstEdge.i, firstEdge.j, vertexIndex};
-        // return std::make_tuple(seedTriangle, newBallPosition);
+        // try rolling into other direction
+        firstEdge = {firstEdge.j, firstEdge.i};
+        optionalVertexIndicees = ballPivot(firstEdge, ballPosition, std::nullopt);
+        if (!optionalVertexIndicees.has_value()) {
+            std::cout << "inital ball rolling touched no vertex" << std::endl;
+            return std::nullopt;
+        }
+        auto [vertexIndicees, newBallPosition] = optionalVertexIndicees.value();
+        return std::make_tuple(firstEdge, vertexIndicees, newBallPosition);
     }
     auto [vertexIndicees, newBallPosition] = optionalVertexIndicees.value();
     return std::make_tuple(firstEdge, vertexIndicees, newBallPosition);
@@ -196,6 +193,7 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
     asserteqf(n*m_to_b_normalized, 0.f, "normal is not perpendicular to plane(e_i, e_j, b)");
     std::vector<std::tuple<VertexIndex, Vertex>> newVertexIndiceesWithIntersection;
     float maxDotProduct = correspondingVertex.has_value() ? calcStartingScalarProduct(e_i, e_j, vertices[correspondingVertex.value()], b) : -1.f;
+    std::cout << "starting dot product: " << maxDotProduct << std::endl;
     Vertex newBallPosition;
     for (VertexIndex neighbour : neighbours) {
         if (correspondingVertex.has_value() && correspondingVertex.value() == neighbour) {
@@ -241,35 +239,42 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
         std::cout << "ball touched no vertex, checked " << neighbours.size() << " neighbours" << std::endl;
         return std::nullopt;
     }
-    std::cout << "new vertices amount: " << newVertexIndicees.size() << ", new ball pos: (" << newBallPosition.x << "," << newBallPosition.y << "," << newBallPosition.z << ")" << std::endl;
+    std::cout << "new ball pos: (" << newBallPosition.x << "," << newBallPosition.y << "," << newBallPosition.z << ")" << std::endl;
     asserteqf(len(conn(e_i, newBallPosition)), r_b, "new ball is not ball radius away from edgepoint i");
     asserteqf(len(conn(e_j, newBallPosition)), r_b, "new ball is not ball radius away from edgepoint j");
     for (VertexIndex newIndex : newVertexIndicees) {
         asserteqf(len(conn(newBallPosition, vertices[newIndex])), r_b, "new ball is not ball radius away from new vertex");
     }
-    std::cout << "new dot prod: " << maxDotProduct << ", equals: " << ((maxDotProduct < -1.f) ? -std::acos(-maxDotProduct-2.f) + M_PI : std::acos(maxDotProduct) ) * 180.f / M_PI << "°" << std::endl;
     for (VertexIndex neighbour : neighbours) {
         if (std::find(newVertexIndicees.begin(), newVertexIndicees.end(), neighbour) != newVertexIndicees.end()) continue;
-        // assertm(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius) > EPS, "vertices lay on the ball surface, those should have been captured before");
+        // if (correspondingVertex.has_value() && neighbour == correspondingVertex.value()) continue;
+        if (std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius) <= EPS) {
+            std::cout << "assertion fail for on surface: " << len(conn(newBallPosition, vertices[neighbour])) - ballRadius << std::endl;
+        }
+        assertm(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius) > EPS, "vertices lay on the ball surface, those should have been captured before");
+        if (len(conn(newBallPosition, vertices[neighbour])) <= ballRadius) {
+            std::cout << "found vertex " << neighbour << " in ball" << std::endl;
+        }
         assertm(len(conn(newBallPosition, vertices[neighbour])) > ballRadius, "vertices lay inside the ball");
     }
     return std::make_tuple(newVertexIndicees, newBallPosition);
 }
 
 float BPA::calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspondingVertex, const Vertex ballPosition) {
-    Vector edgeIToEdgeJ = conn(edgeI, edgeJ);
-    Vector planeNormal = setMag(cross(edgeIToEdgeJ, conn(edgeI, correspondingVertex)), 1.f);
-    Vertex midPoint = toVertex(conn({0,0,0}, edgeI) + (0.5 * edgeIToEdgeJ));
+    Vector edgeIJ = conn(edgeI, edgeJ);
+    Vector planeNormal = setMag(cross(edgeIJ, conn(edgeI, correspondingVertex)), 1.f);
+    Vector awayFromEdgeIJ = setMag(cross(edgeIJ, planeNormal), 1.f);
+    Vertex midPoint = toVertex(conn({0,0,0}, edgeI) + (0.5 * edgeIJ));
     Vector midPointToBallPos = setMag(conn(midPoint, ballPosition), 1.f);
-    float midPointToBallPosDotPlaneNormal = std::clamp(midPointToBallPos * planeNormal, -1.f, 1.f); // prevent floating error outside of arccos domain
     // could be optimized: is it possible to only calculate in scalar product?
-    float alpha = M_PI_2 - std::acos(midPointToBallPosDotPlaneNormal);
+    float radian = std::acos(std::clamp(midPointToBallPos*planeNormal, -1.f, 1.f));
+    assertm(radian >= 0.f, "ball is on wrong side");
+    assert(radian <= M_PI_2);
+    float alpha = midPointToBallPos*awayFromEdgeIJ < 0.f ? M_PI_2-radian : M_PI_2+radian;
     float maxPossibleAngle = 2*M_PI - 2*alpha;
-    float clippedAngle = std::min(maxPossibleAngle, MAX_ROLLING_ANGLE);
-    float ret;
-    if (clippedAngle > 2*M_PI) ret = -std::cos(clippedAngle) - 2.f;
-    ret = std::cos(clippedAngle);
-    return ret;
+    maxPossibleAngle = maxPossibleAngle * 0.9f;
+    if (maxPossibleAngle > M_PI) return -std::cos(maxPossibleAngle) - 2.f;
+    return std::cos(maxPossibleAngle);
 }
 
 std::vector<std::tuple<Edge, VertexIndex>> BPA::triangulatePlanar(const Edge edge, const std::vector<VertexIndex> &vertexIndicees) {

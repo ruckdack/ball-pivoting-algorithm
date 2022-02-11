@@ -21,11 +21,6 @@ Query::Query(const Vertices &v, const float size)
             grid[key].push_back(i);
         }
     }
-    // for (auto it = grid.begin(); it != grid.end(); it++) {
-    //     auto [k, v] = *it;
-    //     auto [k1, k2, k3] = k;
-    //     std::cout << "k: (" << k1 << "," << k2 << "," << k3 << "), v: " << v.size() << std::endl;
-    // }
 }
 
 std::vector<VertexIndex> Query::getNeighbourhood(VertexIndex vertexIndex) {
@@ -53,10 +48,10 @@ std::vector<VertexIndex> Query::getNeighbourhood(VertexIndex vertexIndex) {
 
 std::vector<VertexIndex> Query::getNeighbourhood(Edge edge) {
     std::vector<VertexIndex> neighbours;
+    Vertex midpoint = toVertex(conn({0,0,0}, vertices[edge.i]) + 0.5*conn(vertices[edge.i], vertices[edge.j]));
     for (int64_t offsetX : OFFSETS) {
         for (int64_t offsetY : OFFSETS) {
             for (int64_t offsetZ : OFFSETS) {
-                Vertex midpoint = toVertex(conn({0,0,0}, vertices[edge.i]) + 0.5*conn(vertices[edge.i], vertices[edge.j]));
                 int64_t accessX = std::floor(midpoint.x / voxelSize) + offsetX;
                 int64_t accessY = std::floor(midpoint.y / voxelSize) + offsetY;
                 int64_t accessZ = std::floor(midpoint.z / voxelSize) + offsetZ;

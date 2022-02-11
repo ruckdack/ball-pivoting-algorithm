@@ -9,7 +9,6 @@
 
 class BPA {
     private:
-        const float MAX_ROLLING_ANGLE;
         const Vertices vertices;
         const float ballRadius;
         std::list<Triangle> faces;
@@ -26,7 +25,7 @@ class BPA {
         std::vector<std::tuple<Edge, VertexIndex>> triangulatePlanar(const Edge edge, const std::vector<VertexIndex> &vertexIndicees);
         std::vector<Vertex> intersectCircleSphere(const Vertex circleCenter, const float circleRadius, const Vector circleNormal, const Vertex sphereCenter, const float sphereRadius);
     public:
-        BPA(const Vertices &vertices, const float ballRadius, const float maxRollingAngle);
+        BPA(const Vertices &vertices, const float ballRadius);
         bool isDone();
         void step();
         std::list<Triangle> getFaces();
