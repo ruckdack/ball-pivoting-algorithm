@@ -6,7 +6,7 @@
 #include <iostream>
 #include <string>
 
-#define DEBUG true
+#define DEBUG false
 
 int main(int argc, char *argv[]) {
     size_t numOfArgs = 4;

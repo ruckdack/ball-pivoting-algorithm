@@ -11,7 +11,7 @@
 #include <map>
 
 #define _USE_MATH_DEFINES
-#define EPS 0.000001f
+#define EPS 0.00001f
 #define assertm(eq, msg) assert(((void)msg, eq))
 #define asserteq(val1, val2, msg) assert(((void)msg, val1 == val2))
 #define asserteqf(val1, val2, msg) assert(((void)msg, std::abs(val1 - val2) < EPS))
@@ -129,7 +129,7 @@ std::optional<std::tuple<Edge, std::vector<VertexIndex>, Vertex>> BPA::findSeedT
         Vector fromMinToNeighbour = conn(vertices[minVertex], vertices[neighbour]);
         if (len(fromMinToNeighbour) >= 2 * ballRadius) continue;
         float dotProduct = awayFromFace * setMag(fromMinToNeighbour, 1.f);
-        if (dotProduct > maxDotProduct + EPS) {
+        if (dotProduct > maxDotProduct) {
             maxDotProductIndicees = {neighbour};
             maxDotProduct = dotProduct;
             continue;
@@ -194,10 +194,8 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
     asserteqf(len(conn(e_j, b)), r_b, "ball is placed incorrectly");
     Vector n = setMag(cross(e_i_to_e_j, m_to_b_normalized), 1.f);
     asserteqf(n*m_to_b_normalized, 0.f, "normal is not perpendicular to plane(e_i, e_j, b)");
-    std::vector<VertexIndex> newVertexIndicees;
+    std::vector<std::tuple<VertexIndex, Vertex>> newVertexIndiceesWithIntersection;
     float maxDotProduct = correspondingVertex.has_value() ? calcStartingScalarProduct(e_i, e_j, vertices[correspondingVertex.value()], b) : -1.f;
-    std::cout << "starting scalar product: " << maxDotProduct << std::endl;
-    assertm(!std::isnan(maxDotProduct), "starting scalar product is nan");
     Vertex newBallPosition;
     for (VertexIndex neighbour : neighbours) {
         if (correspondingVertex.has_value() && correspondingVertex.value() == neighbour) {
@@ -207,7 +205,7 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
         for (Vertex i : intersections) {
             asserteqf(len(conn(e_i, i)), r_b, "intersection is not ball radius away from edgepoint i");
             asserteqf(len(conn(e_j, i)), r_b, "intersection is not ball radius away from edgepoint j");
-            asserteqf(len(conn(vertices[neighbour],i)), r_b, "intersection is not ball radius away from neighbour");
+            asserteqf(len(conn(vertices[neighbour], i)), r_b, "intersection is not ball radius away from neighbour");
             Vector m_to_i_normalized = setMag(conn(m, i), 1.f);
             float p = m_to_b_normalized * m_to_i_normalized;
             if (len(conn(i, b)) < EPS) {
@@ -220,15 +218,24 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
             }
             if (p > maxDotProduct) {
                 maxDotProduct = p;
-                newVertexIndicees = {neighbour};
+                // keep all near intersections
+                std::vector<std::tuple<VertexIndex, Vertex>> tmp = {std::make_tuple(neighbour, i)};
+                for (auto it = newVertexIndiceesWithIntersection.begin(); it != newVertexIndiceesWithIntersection.end(); it++) {
+                    auto [_, intersection] = *it;
+                    if (len(conn(intersection, i)) < EPS) tmp.push_back(*it);
+                }
+                newVertexIndiceesWithIntersection = tmp;
                 newBallPosition = i;
                 continue;
             }
-            // if (m_to_i_normalized * setMag(conn(m, newBallPosition), 1.f) >= 1.f-EPS) {
             if (len(conn(i, newBallPosition)) < EPS) {
-                newVertexIndicees.push_back(neighbour);
+                newVertexIndiceesWithIntersection.push_back(std::make_tuple(neighbour, i));
             }
         }
+    }
+    std::vector<VertexIndex> newVertexIndicees;
+    for (auto [vertexIndex, _] : newVertexIndiceesWithIntersection) {
+        newVertexIndicees.push_back(vertexIndex);
     }
     if (newVertexIndicees.size() == 0) {
         std::cout << "ball touched no vertex, checked " << neighbours.size() << " neighbours" << std::endl;
@@ -243,7 +250,7 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
     std::cout << "new dot prod: " << maxDotProduct << ", equals: " << ((maxDotProduct < -1.f) ? -std::acos(-maxDotProduct-2.f) + M_PI : std::acos(maxDotProduct) ) * 180.f / M_PI << "°" << std::endl;
     for (VertexIndex neighbour : neighbours) {
         if (std::find(newVertexIndicees.begin(), newVertexIndicees.end(), neighbour) != newVertexIndicees.end()) continue;
-        assertm(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius) > EPS, "vertices lay on the ball surface, those should have been captured before");
+        // assertm(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius) > EPS, "vertices lay on the ball surface, those should have been captured before");
         assertm(len(conn(newBallPosition, vertices[neighbour])) > ballRadius, "vertices lay inside the ball");
     }
     return std::make_tuple(newVertexIndicees, newBallPosition);
