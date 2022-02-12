@@ -2,6 +2,8 @@
 
 #include <regex>
 
+#define EPS 1.0e-05f
+
 std::vector<std::string> Helpers::split(const std::string str, const char delimiter) {
     std::vector<size_t> locations = findChar(str, delimiter);
     if (locations.front() != 0)
@@ -30,4 +32,10 @@ std::vector<size_t> Helpers::findChar(const std::string str, const char c) {
 bool Helpers::pathSyntaxValid(std::string path) {
     std::regex re(R"(((\.{1,2}|([A-Za-z_0-9]|\-)+)\/)*([A-Za-z_0-9]|\-)+\.obj)");
     return std::regex_match(path, re);
+}
+
+bool Helpers::equals(float f1, float f2) {
+    if (std::abs(f1 - f2) <= EPS)
+        return true;
+    return std::abs(f1 - f2) <= EPS * std::max(std::abs(f1), std::abs(f2));
 }
