@@ -1,5 +1,6 @@
 #include "bpa.h"
 #include "../helpers/helpers.h"
+#include "../trace.h"
 
 #include <cassert>
 #include <iostream>
@@ -16,7 +17,7 @@ std::optional<std::tuple<Edge, Vertex, VertexIndex>> Front::getActiveEdge() {
             }
         }
     }
-    std::cout << "no active edges" << std::endl;
+    DBOUT << "no active edges" << std::endl;
     return std::nullopt;
 }
 
@@ -58,7 +59,7 @@ void Front::glue(Edge edge1, Edge edge2) {
             // on same loop
             if (loop.size() <= 2) {
                 // trivial loop
-                std::cout << "trivial loop: (" << edge1.i << "," << edge1.j << ")" << std::endl;
+                DBOUT << "trivial loop: (" << edge1.i << "," << edge1.j << ")" << std::endl;
                 front.erase(loopIter);
                 assert(!contains(edge1) && !contains(edge2));
                 assert(integrity());
@@ -67,7 +68,7 @@ void Front::glue(Edge edge1, Edge edge2) {
             }
             if (areConsecutive(loop, it1, it2)) {
                 // consecutive on same loop
-                std::cout << "consec on same loop" << std::endl;
+                DBOUT << "consec on same loop" << std::endl;
                 loop.erase(it1);
                 loop.erase(it2);
                 assert(!contains(edge1) && !contains(edge2));
@@ -75,7 +76,7 @@ void Front::glue(Edge edge1, Edge edge2) {
                 return;
             }
             // not consecutive on same loop
-            std::cout << "not consec on same loop" << std::endl;
+            DBOUT << "not consec on same loop" << std::endl;
             Loop secondLoop;
             if (std::distance(loop.begin(), it1) > std::distance(loop.begin(), it2)) {
                 auto temp = it2;
@@ -101,7 +102,7 @@ void Front::glue(Edge edge1, Edge edge2) {
         }
     }
     // edges are not on same loop
-    std::cout << "not on same loop" << std::endl;
+    DBOUT << "not on same loop" << std::endl;
     loop1Iterator->splice(edge1Iterator, *loop2Iterator, std::next(edge2Iterator), loop2Iterator->end());
     loop1Iterator->splice(edge1Iterator, *loop2Iterator, loop2Iterator->begin(), std::next(edge2Iterator));
     loop1Iterator->erase(edge1Iterator);
@@ -180,7 +181,7 @@ bool Front::loopIntegrity(Loop &loop) {
 bool Front::integrity() {
     for (Loop &loop : front) {
         if (!loopIntegrity(loop)) {
-            std::cout << "loop order corrupted" << std::endl;
+            DBOUT << "loop order corrupted" << std::endl;
             return false;
         }
     }
@@ -191,7 +192,7 @@ bool Front::integrity() {
                 if (*it != loop) {
                     for (Edge &e : *it) {
                         if (edge == e) {
-                            std::cout << "front contains double edge" << std::endl;
+                            DBOUT << "front contains double edge" << std::endl;
                             return false;
                         }
                     }

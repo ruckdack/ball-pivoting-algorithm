@@ -1,10 +1,11 @@
 #include "helpers.h"
 
 #include <regex>
+#include <cstdarg>
 
 #define EPS 1.0e-05f
 
-std::vector<std::string> Helpers::split(const std::string str, const char delimiter) {
+std::vector<std::string> split(const std::string str, const char delimiter) {
     std::vector<size_t> locations = findChar(str, delimiter);
     if (locations.front() != 0)
         locations.insert(locations.begin(), -1);
@@ -20,7 +21,7 @@ std::vector<std::string> Helpers::split(const std::string str, const char delimi
     return splitted;
 }
 
-std::vector<size_t> Helpers::findChar(const std::string str, const char c) {
+std::vector<size_t> findChar(const std::string str, const char c) {
     std::vector<size_t> locations;
     for (size_t i = 0; i < str.size(); i++) {
         if (str[i] == c)
@@ -29,12 +30,12 @@ std::vector<size_t> Helpers::findChar(const std::string str, const char c) {
     return locations;
 }
 
-bool Helpers::pathSyntaxValid(std::string path) {
+bool pathSyntaxValid(std::string path) {
     std::regex re(R"(((\.{1,2}|([A-Za-z_0-9]|\-)+)\/)*([A-Za-z_0-9]|\-)+\.obj)");
     return std::regex_match(path, re);
 }
 
-bool Helpers::equals(float f1, float f2) {
+bool equals(float f1, float f2) {
     if (std::abs(f1 - f2) <= EPS)
         return true;
     return std::abs(f1 - f2) <= EPS * std::max(std::abs(f1), std::abs(f2));

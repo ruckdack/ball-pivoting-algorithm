@@ -16,7 +16,7 @@ Vertices IO::readVertices(std::string path) {
     }
     std::string line;
     while (std::getline(file, line)) {
-        std::vector<std::string> splittedLine = Helpers::split(line, ' ');
+        std::vector<std::string> splittedLine = split(line, ' ');
         if (splittedLine.front() == "v") {
             Vertex vertex = readVertex(splittedLine);
             vertices.emplace_back(vertex);

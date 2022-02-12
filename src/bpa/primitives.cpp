@@ -1,5 +1,7 @@
 #include "primitives.h"
 
+#include "../helpers/helpers.h"
+
 #include <cmath>
 #include <iostream>
 
@@ -33,6 +35,12 @@ Vector conn(const Vertex from, const Vertex to) {
 
 float dist(const Vertex from, const Vertex to) {
     return len(conn(from, to));
+}
+
+bool equals(const Vertex vertex1, const Vertex vertex2) {
+    return equals(vertex1.x, vertex2.x) 
+    && equals(vertex1.y, vertex2.y) 
+    && equals(vertex1.z, vertex2.z);
 }
 
 Vertex toVertex(const Vector vector) {
