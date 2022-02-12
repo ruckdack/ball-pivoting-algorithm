@@ -242,7 +242,6 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
     }
     for (VertexIndex neighbour : neighbours) {
         if (std::find(newVertexIndicees.begin(), newVertexIndicees.end(), neighbour) != newVertexIndicees.end()) continue;
-        // if (correspondingVertex.has_value() && neighbour == correspondingVertex.value()) continue;
         if (Helpers::equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.f)) {
             std::cout << "assertion fail for on surface: " << len(conn(newBallPosition, vertices[neighbour])) - ballRadius << " for vertex: " << neighbour << std::endl;
         }

@@ -1,4 +1,4 @@
 build/
-input/
+*.blend1
 output/
 .vscode
