@@ -46,7 +46,6 @@ void Front::join(Edge edge, VertexIndex vertexIndex, Vertex ballPosition) {
 
 void Front::glue(Edge edge1, Edge edge2) {
     assert(edge1.i == edge2.j && edge1.j == edge2.i);
-    // std::cout << "glueing" << std::endl;
     std::list<Loop>::iterator loop1Iterator;
     std::list<Edge>::iterator edge1Iterator;
     std::list<Loop>::iterator loop2Iterator;

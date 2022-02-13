@@ -3,7 +3,7 @@
 #include <regex>
 #include <cstdarg>
 
-#define EPS 1.0e-05f
+#define EPS 1.0e-3f
 
 std::vector<std::string> split(const std::string str, const char delimiter) {
     std::vector<size_t> locations = findChar(str, delimiter);

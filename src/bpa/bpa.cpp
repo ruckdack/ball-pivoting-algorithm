@@ -208,7 +208,7 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
                 assertm(used(neighbour), "unused vertices should not be found before rolling (they should already have been added in a prior rolling step)");
                 continue;
             }
-            if (len(conn(i, b)) < 0.001f) {
+            if (len(conn(i, b)) < 0.01f) {
                 DBOUT << "-- " << len(conn(i, b)) << std::endl;
             }
             if (n * m_to_i_normalized < 0.f) {
@@ -221,11 +221,11 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
                 std::vector<std::tuple<VertexIndex, Vertex>> tmp = {std::make_tuple(neighbour, i)};
                 for (auto it = newVertexIndiceesWithIntersection.begin(); it != newVertexIndiceesWithIntersection.end(); it++) {
                     auto [_, intersection] = *it;
-                    if (equals(len(conn(intersection, i)), 0.f)) tmp.push_back(*it);
+                    if (equals(intersection, i)) tmp.push_back(*it);
                 }
                 newVertexIndiceesWithIntersection = tmp;
                 newBallPosition = i;
-            } else if (equals(len(conn(i, newBallPosition)), 0.f)) {
+            } else if (equals(i, newBallPosition)) {
                 newVertexIndiceesWithIntersection.push_back(std::make_tuple(neighbour, i));
             }
         }
@@ -238,11 +238,11 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
         DBOUT << "ball touched no vertex, checked " << neighbours.size() << " neighbours" << std::endl;
         return std::nullopt;
     }
+#ifdef DEBUG
     for (auto v : newVertexIndicees) {
         DBOUT << "found: " << v << std::endl;
     }
-    DBOUT << "rotating ball by: " << maxDotProduct << " (in dot product)" << std::endl;
-    DBOUT << "new ball pos: (" << newBallPosition.x << "," << newBallPosition.y << "," << newBallPosition.z << ")" << std::endl;
+    DBOUT << "rotating ball to position: (" << newBallPosition.x << "," << newBallPosition.y << "," << newBallPosition.z << "), or " << maxDotProduct << " in dot product" << std::endl;
     assertm(equals(len(conn(e_i, newBallPosition)), r_b), "new ball is not ball radius away from edgepoint i");
     assertm(equals(len(conn(e_j, newBallPosition)), r_b), "new ball is not ball radius away from edgepoint j");
     for (VertexIndex newIndex : newVertexIndicees) {
@@ -251,7 +251,13 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
     for (VertexIndex neighbour : neighbours) {
         if (std::find(newVertexIndicees.begin(), newVertexIndicees.end(), neighbour) != newVertexIndicees.end()) continue;
         if (equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.f)) {
-            DBOUT << "assertion fail for on surface: " << len(conn(newBallPosition, vertices[neighbour])) - ballRadius << " for vertex: " << neighbour << std::endl;
+            DBOUT << "[assertion fail] found vertex " << neighbour << " on ball surface with distance to ball: " << len(conn(newBallPosition, vertices[neighbour])) - ballRadius << std::endl;
+            std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.f), vertices[neighbour], r_b);
+            DBOUT << "[assertion fail] found following intersections for neighbour:" << std::endl;
+            for (Vertex i : intersections) {
+                DBOUT << "[assertion fail] (" << i.x << "," << i.y << "," << i.z << "), which is a dot product of: " << m_to_b_normalized*setMag(conn(m, i), 1.f) << std::endl;
+                DBOUT << "[assertion fail] this intersection " << (equals(newBallPosition, i) ? "equals " : "does not equal ") << "the new ball position" << std::endl;
+            }
         }
         assertm(!equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.f), "vertices lay on the ball surface, those should have been captured before");
         if (len(conn(newBallPosition, vertices[neighbour])) <= ballRadius) {
@@ -259,6 +265,7 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
         }
         assertm(len(conn(newBallPosition, vertices[neighbour])) > ballRadius, "vertices lay inside the ball");
     }
+#endif
     return std::make_tuple(newVertexIndicees, newBallPosition);
 }
 

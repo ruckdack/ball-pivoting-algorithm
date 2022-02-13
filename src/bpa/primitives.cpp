@@ -39,8 +39,8 @@ float dist(const Vertex from, const Vertex to) {
 
 bool equals(const Vertex vertex1, const Vertex vertex2) {
     return equals(vertex1.x, vertex2.x) 
-    && equals(vertex1.y, vertex2.y) 
-    && equals(vertex1.z, vertex2.z);
+        && equals(vertex1.y, vertex2.y) 
+        && equals(vertex1.z, vertex2.z);
 }
 
 Vertex toVertex(const Vector vector) {
