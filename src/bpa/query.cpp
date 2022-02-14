@@ -5,7 +5,7 @@
 #include <cassert>
 #include <iostream>
 
-Query::Query(const Vertices &v, const float size)
+Query::Query(const Vertices &v, const double size)
 : OFFSETS({-1, 0, 1})
 , vertices(v)
 , voxelSize(size) {

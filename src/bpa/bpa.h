@@ -10,7 +10,7 @@
 class BPA {
     private:
         const Vertices vertices;
-        const float ballRadius;
+        const double ballRadius;
         std::list<Triangle> faces;
         Query query;
         Front front;
@@ -21,12 +21,14 @@ class BPA {
         bool multiInsert(Edge edge, std::vector<VertexIndex> vertexIndicees, Vertex ballPosition);
         std::optional<std::tuple<Edge, std::vector<VertexIndex>, Vertex>> findSeedTriangles();   
         std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspondingVertex);
-        float calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspondingVertex, const Vertex ballPosition);
+        double calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspondingVertex, const Vertex ballPosition);
         std::vector<std::tuple<Edge, VertexIndex>> triangulatePlanar(const Edge edge, const std::vector<VertexIndex> &vertexIndicees);
-        std::vector<Vertex> intersectCircleSphere(const Vertex circleCenter, const float circleRadius, const Vector circleNormal, const Vertex sphereCenter, const float sphereRadius);
+        std::vector<Vertex> intersectCircleSphere(const Vertex circleCenter, const double circleRadius, const Vector circleNormal, const Vertex sphereCenter, const double sphereRadius);
     public:
-        BPA(const Vertices &vertices, const float ballRadius);
+        BPA(const Vertices &vertices, const double ballRadius);
         bool isDone();
         void step();
+        bool boundaryWasFound();
+        size_t numOfUsedVertices();
         std::list<Triangle> getFaces();
 };

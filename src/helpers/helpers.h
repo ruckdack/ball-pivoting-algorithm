@@ -9,5 +9,5 @@ std::vector<size_t> findChar(const std::string str, const char c);
 bool pathSyntaxValid(std::string path);
 template <typename T> std::vector<T> convertFromListToVector(std::list<T> &list);
 template <typename T> bool contains(std::list<T> list, T element);
-bool equals(float f1, float f2);
+bool equals(double f1, double f2);
 #include "helpers_templates.h"

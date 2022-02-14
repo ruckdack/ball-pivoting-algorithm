@@ -14,7 +14,7 @@
 #define _USE_MATH_DEFINES
 #define assertm(eq, msg) assert(((void)msg, eq))
 
-BPA::BPA(const Vertices &v, const float ballRad)
+BPA::BPA(const Vertices &v, const double ballRad)
 : vertices(v)
 , ballRadius(ballRad)
 , query(vertices, 2*ballRadius)
@@ -73,11 +73,16 @@ void BPA::step() {
             front.markAsBoundary(edge);
         } else {
             done = true;
-            if (front.nonemptyBoundary()) {
-                INFOUT << "A boundary was found." << std::endl;
-            }
         }
     }
+}
+
+bool BPA::boundaryWasFound() {
+    return front.nonemptyBoundary();
+}
+
+size_t BPA::numOfUsedVertices() {
+    return usedVertices.size();
 }
 
 std::list<Triangle> BPA::getFaces() {
@@ -120,11 +125,11 @@ std::optional<std::tuple<Edge, std::vector<VertexIndex>, Vertex>> BPA::findSeedT
 
     Vector awayFromFace = {-1, 0, 0};
     std::vector<VertexIndex> maxDotProductIndicees;
-    float maxDotProduct = -1;
+    double maxDotProduct = -1;
     for (VertexIndex neighbour : neighbours) {
         Vector fromMinToNeighbour = conn(vertices[minVertex], vertices[neighbour]);
         if (len(fromMinToNeighbour) >= 2 * ballRadius) continue;
-        float dotProduct = awayFromFace * setMag(fromMinToNeighbour, 1.f);
+        double dotProduct = awayFromFace * setMag(fromMinToNeighbour, 1.0);
         // TODO some values could get cut off
         if (dotProduct > maxDotProduct) {
             maxDotProductIndicees = {neighbour};
@@ -146,7 +151,7 @@ std::optional<std::tuple<Edge, std::vector<VertexIndex>, Vertex>> BPA::findSeedT
     Vector fromMinToNeighbour = conn(vertices[minVertex], vertices[maxDotProductIndex]);
     // find ball position for initial rolling
     Vector pseudoNormal = cross(fromMinToNeighbour, awayFromFace); // this pseudo normal is not normalized (not needed)
-    float halfTriangleBaseLength = len(fromMinToNeighbour) * 0.5;
+    double halfTriangleBaseLength = len(fromMinToNeighbour) * 0.5;
     Vector triangleHeight = setMag(cross(pseudoNormal, fromMinToNeighbour), std::sqrt(ballRadius*ballRadius - halfTriangleBaseLength*halfTriangleBaseLength));
     Vertex ballPosition = toVertex(conn({0,0,0}, vertices[minVertex]) + (0.5 * fromMinToNeighbour) + triangleHeight);
     assertm(equals(len(conn(vertices[minVertex], ballPosition)), ballRadius), "inital ball is placed incorrectly");
@@ -177,43 +182,43 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
     DBOUT << std::endl; 
     DBOUT << "rolling on: (" << edge.i << "," << edge.j << ")" << std::endl;
     Vertex b = ballPosition;
-    float r_b = ballRadius;
+    double r_b = ballRadius;
 
     Vector e_i_to_e_j = conn(e_i, e_j); // circle plane normal, not normalized
     Vertex m = toVertex(conn({0,0,0}, e_i) + (0.5 * e_i_to_e_j));
-    Vector m_to_b_normalized = setMag(conn(m, b), 1.f);
-    float l_e = len(e_i_to_e_j);
-    float r_c = std::sqrt(r_b*r_b - 0.25*l_e*l_e);
+    Vector m_to_b_normalized = setMag(conn(m, b), 1.0);
+    double l_e = len(e_i_to_e_j);
+    double r_c = std::sqrt(r_b*r_b - 0.25*l_e*l_e);
     assertm(equals(len(conn(e_i, b)), r_b), "ball is placed incorrectly");
     assertm(equals(len(conn(e_j, b)), r_b), "ball is placed incorrectly");
-    Vector n = setMag(cross(e_i_to_e_j, m_to_b_normalized), 1.f);
-    assertm(equals(n*m_to_b_normalized, 0.f), "normal is not perpendicular to plane(e_i, e_j, b)");
+    Vector n = setMag(cross(e_i_to_e_j, m_to_b_normalized), 1.0);
+    assertm(equals(n*m_to_b_normalized, 0.0), "normal is not perpendicular to plane(e_i, e_j, b)");
     std::vector<std::tuple<VertexIndex, Vertex>> newVertexIndiceesWithIntersection;
-    float maxDotProduct = correspondingVertex.has_value() ? calcStartingScalarProduct(e_i, e_j, vertices[correspondingVertex.value()], b) : -1.f;
+    double maxDotProduct = correspondingVertex.has_value() ? calcStartingScalarProduct(e_i, e_j, vertices[correspondingVertex.value()], b) : -1.0;
     DBOUT << "starting dot product: " << maxDotProduct << std::endl;
     Vertex newBallPosition;
     for (VertexIndex neighbour : neighbours) {
         if (correspondingVertex.has_value() && correspondingVertex.value() == neighbour) {
             continue;
         }
-        std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.f), vertices[neighbour], r_b);
+        std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.0), vertices[neighbour], r_b);
         for (Vertex i : intersections) {
             assertm(equals(len(conn(e_i, i)), r_b), "intersection is not ball radius away from edgepoint i");
             assertm(equals(len(conn(e_j, i)), r_b), "intersection is not ball radius away from edgepoint j");
             assertm(equals(len(conn(vertices[neighbour], i)), r_b), "intersection is not ball radius away from neighbour");
-            Vector m_to_i_normalized = setMag(conn(m, i), 1.f);
-            float p = m_to_b_normalized * m_to_i_normalized;
+            Vector m_to_i_normalized = setMag(conn(m, i), 1.0);
+            double p = m_to_b_normalized * m_to_i_normalized;
             if (equals(i, b)) {
                 // ball is not moving in this case
                 assertm(used(neighbour), "unused vertices should not be found before rolling (they should already have been added in a prior rolling step)");
                 continue;
             }
-            if (len(conn(i, b)) < 0.01f) {
-                DBOUT << "-- " << len(conn(i, b)) << std::endl;
-            }
-            if (n * m_to_i_normalized < 0.f) {
+            // if (len(conn(i, b)) < 0.01f) {
+            //     DBOUT << "-- " << len(conn(i, b)) << std::endl;
+            // }
+            if (n * m_to_i_normalized < 0.0) {
                 // in this case ball is rotated more than 180°, we use the "extended" scalar product 
-                p = -p - 2.f;
+                p = -p - 2.0;
             }
             if (p > maxDotProduct) {
                 maxDotProduct = p;
@@ -250,16 +255,16 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
     }
     for (VertexIndex neighbour : neighbours) {
         if (std::find(newVertexIndicees.begin(), newVertexIndicees.end(), neighbour) != newVertexIndicees.end()) continue;
-        if (equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.f)) {
+        if (equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.0)) {
             DBOUT << "[assertion fail] found vertex " << neighbour << " on ball surface with distance to ball: " << len(conn(newBallPosition, vertices[neighbour])) - ballRadius << std::endl;
-            std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.f), vertices[neighbour], r_b);
+            std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.0), vertices[neighbour], r_b);
             DBOUT << "[assertion fail] found following intersections for neighbour:" << std::endl;
             for (Vertex i : intersections) {
-                DBOUT << "[assertion fail] (" << i.x << "," << i.y << "," << i.z << "), which is a dot product of: " << m_to_b_normalized*setMag(conn(m, i), 1.f) << std::endl;
+                DBOUT << "[assertion fail] (" << i.x << "," << i.y << "," << i.z << "), which is a dot product of: " << m_to_b_normalized*setMag(conn(m, i), 1.0) << std::endl;
                 DBOUT << "[assertion fail] this intersection " << (equals(newBallPosition, i) ? "equals " : "does not equal ") << "the new ball position" << std::endl;
             }
         }
-        assertm(!equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.f), "vertices lay on the ball surface, those should have been captured before");
+        assertm(!equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.0), "vertices lay on the ball surface, those should have been captured before");
         if (len(conn(newBallPosition, vertices[neighbour])) <= ballRadius) {
             DBOUT << "found vertex " << neighbour << " in ball" << std::endl;
         }
@@ -269,30 +274,30 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
     return std::make_tuple(newVertexIndicees, newBallPosition);
 }
 
-float BPA::calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspondingVertex, const Vertex ballPosition) {
+double BPA::calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspondingVertex, const Vertex ballPosition) {
     Vector edgeIJ = conn(edgeI, edgeJ);
-    Vector planeNormal = setMag(cross(edgeIJ, conn(edgeI, correspondingVertex)), 1.f);
-    Vector awayFromEdgeIJ = setMag(cross(edgeIJ, planeNormal), 1.f);
+    Vector planeNormal = setMag(cross(edgeIJ, conn(edgeI, correspondingVertex)), 1.0);
+    Vector awayFromEdgeIJ = setMag(cross(edgeIJ, planeNormal), 1.0);
     Vertex midPoint = toVertex(conn({0,0,0}, edgeI) + (0.5 * edgeIJ));
-    Vector midPointToBallPos = setMag(conn(midPoint, ballPosition), 1.f);
+    Vector midPointToBallPos = setMag(conn(midPoint, ballPosition), 1.0);
     // could be optimized: is it possible to only calculate in scalar product?
-    float radian = std::acos(std::clamp(midPointToBallPos*planeNormal, -1.f, 1.f));
-    assertm(radian >= 0.f, "ball is on wrong side");
-    float alpha = midPointToBallPos*awayFromEdgeIJ < 0.f ? M_PI_2-radian+0.0001f : M_PI_2+radian+0.0001f;
-    float maxPossibleAngle = 2*M_PI - 2*alpha;
+    double radian = std::acos(std::clamp(midPointToBallPos*planeNormal, -1.0, 1.0));
+    assertm(radian >= 0.0, "ball is on wrong side");
+    double alpha = midPointToBallPos*awayFromEdgeIJ < 0.0 ? M_PI_2-radian+0.0001f : M_PI_2+radian+0.0001f;
+    double maxPossibleAngle = 2*M_PI - 2*alpha;
     maxPossibleAngle = maxPossibleAngle * 0.9f;
-    if (maxPossibleAngle > M_PI) return -std::cos(maxPossibleAngle) - 2.f;
+    if (maxPossibleAngle > M_PI) return -std::cos(maxPossibleAngle) - 2.0;
     return std::cos(maxPossibleAngle);
 }
 
 std::vector<std::tuple<Edge, VertexIndex>> BPA::triangulatePlanar(const Edge edge, const std::vector<VertexIndex> &vertexIndicees) {
     // assert planar vertices
     assert(vertexIndicees.size() > 0);
-    Vector JtoINormalized = setMag(conn(vertices[edge.j], vertices[edge.i]), 1.f);
+    Vector JtoINormalized = setMag(conn(vertices[edge.j], vertices[edge.i]), 1.0);
 
     auto sorting = [JtoINormalized, edge, this](const VertexIndex vertexIndex1, const VertexIndex vertexIndex2) {
-        Vector JtoVertex1Normalized = setMag(conn(vertices[edge.j], vertices[vertexIndex1]), 1.f);
-        Vector JtoVertex2Normalized = setMag(conn(vertices[edge.j], vertices[vertexIndex2]), 1.f);
+        Vector JtoVertex1Normalized = setMag(conn(vertices[edge.j], vertices[vertexIndex1]), 1.0);
+        Vector JtoVertex2Normalized = setMag(conn(vertices[edge.j], vertices[vertexIndex2]), 1.0);
         return JtoINormalized * JtoVertex1Normalized > JtoINormalized * JtoVertex2Normalized;
     };
 
@@ -309,44 +314,44 @@ std::vector<std::tuple<Edge, VertexIndex>> BPA::triangulatePlanar(const Edge edg
     return triangulated;
 }
 
-std::vector<Vertex> BPA::intersectCircleSphere(const Vertex circleCenter, const float circleRadius, const Vector circleNormal, const Vertex sphereCenter, const float sphereRadius) {
+std::vector<Vertex> BPA::intersectCircleSphere(const Vertex circleCenter, const double circleRadius, const Vector circleNormal, const Vertex sphereCenter, const double sphereRadius) {
     assert(!std::isnan(circleCenter.x) && !std::isnan(circleCenter.y) && !std::isnan(circleCenter.z));
     assert(!std::isnan(sphereCenter.x) && !std::isnan(sphereCenter.y) && !std::isnan(sphereCenter.z));
     assert(!std::isnan(circleNormal.x) && !std::isnan(circleNormal.y) && !std::isnan(circleNormal.z));
-    assert(circleRadius > 0.f);
-    assert(sphereRadius > 0.f);
-    assertm(equals(len(circleNormal), 1.f), "circle normal is not normalized");
+    assert(circleRadius > 0.0);
+    assert(sphereRadius > 0.0);
+    assertm(equals(len(circleNormal), 1.0), "circle normal is not normalized");
     std::vector<Vertex> intersections;
     if (len(conn(circleCenter, sphereCenter)) > circleRadius + sphereRadius) {
         return intersections;
     }
     // first intersect circle plane with sphere -> we get a second circle in the same plane
     // intersect line with direction of circleNormal through sphereCenter with circle plane
-    float scale = conn(sphereCenter, circleCenter) * circleNormal;
+    double scale = conn(sphereCenter, circleCenter) * circleNormal;
     if (std::abs(scale) > sphereRadius) return intersections;
     Vertex intersectionCircleCenter = toVertex(conn({0,0,0}, sphereCenter) + setMag(circleNormal, scale));
-    float intersectionCircleRadius = std::sqrt(sphereRadius*sphereRadius - scale*scale);
+    double intersectionCircleRadius = std::sqrt(sphereRadius*sphereRadius - scale*scale);
 
 
     // second we intersect both circles
     // we use notation from http://paulbourke.net/geometry/circlesphere/
 
     Vertex P_0 = circleCenter;
-    float r_0 = circleRadius;
+    double r_0 = circleRadius;
     Vertex P_1 = intersectionCircleCenter;
-    float r_1 = intersectionCircleRadius;
+    double r_1 = intersectionCircleRadius;
 
     Vector P_0_to_P_1 = conn(P_0, P_1);
-    float d = len(P_0_to_P_1);
+    double d = len(P_0_to_P_1);
     if (d < std::abs(r_0 - r_1)) return intersections;
     if (d > r_0 + r_1) return intersections;
-    float a = (r_0*r_0 - r_1*r_1 + d*d) / (2*d);
+    double a = (r_0*r_0 - r_1*r_1 + d*d) / (2*d);
     Vertex P_2 = toVertex(conn({0,0,0}, P_0) + setMag(P_0_to_P_1, a));
     if (equals(r_0, std::abs(a))) {
         intersections.push_back(toVertex(conn({0,0,0}, P_2)));
         return intersections;
     }
-    float h = std::sqrt(r_0*r_0 - a*a);
+    double h = std::sqrt(r_0*r_0 - a*a);
     Vector dir_h = cross(circleNormal, P_0_to_P_1);
     Vertex i1 = toVertex(conn({0,0,0}, P_2) + setMag(dir_h, h));
     Vertex i2 = toVertex(conn({0,0,0}, P_2) + setMag(dir_h, -h));

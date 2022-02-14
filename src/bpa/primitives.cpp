@@ -33,7 +33,7 @@ Vector conn(const Vertex from, const Vertex to) {
     };
 }
 
-float dist(const Vertex from, const Vertex to) {
+double dist(const Vertex from, const Vertex to) {
     return len(conn(from, to));
 }
 
@@ -60,14 +60,14 @@ Vector operator+(const Vector vector1, const Vector vector2) {
 }
 
 Vector operator-(const Vector vector1, const Vector vector2) {
-    return vector1 + (-1.f * vector2);
+    return vector1 + (-1.0 * vector2);
 }
 
-float operator*(const Vector vector1, const Vector vector2) {
+double operator*(const Vector vector1, const Vector vector2) {
     return vector1.x * vector2.x + vector1.y * vector2.y + vector1.z * vector2.z;
 }
 
-Vector operator*(const float scale, const Vector vector) {
+Vector operator*(const double scale, const Vector vector) {
     return {
         scale * vector.x,
         scale * vector.y,
@@ -83,11 +83,11 @@ Vector cross(const Vector vector1, const Vector vector2) {
     };
 }
 
-float len(const Vector vector) {
+double len(const Vector vector) {
     return std::sqrt(vector.x*vector.x + vector.y*vector.y + vector.z*vector.z);
 }
 
-Vector setMag(const Vector vector, const float newMag) {
-    float l = len(vector);
+Vector setMag(const Vector vector, const double newMag) {
+    double l = len(vector);
     return (newMag / l) * vector;
 }

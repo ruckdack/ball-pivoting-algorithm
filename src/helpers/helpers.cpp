@@ -3,7 +3,7 @@
 #include <regex>
 #include <cstdarg>
 
-#define EPS 1.0e-3f
+#define EPS 1.0e-10f
 
 std::vector<std::string> split(const std::string str, const char delimiter) {
     std::vector<size_t> locations = findChar(str, delimiter);
@@ -31,12 +31,12 @@ std::vector<size_t> findChar(const std::string str, const char c) {
 }
 
 bool pathSyntaxValid(std::string path) {
-    std::regex re(R"(((\.{1,2}|([A-Za-z_0-9]|\-)+)\/)*([A-Za-z_0-9]|\-)+\.obj)");
+    std::regex re(R"(((\.{1,2}|([A-Za-z_0-9]|\-|\+)+)\/)*([A-Za-z_0-9]|\-|\+)+\.obj)");
     return std::regex_match(path, re);
 }
 
-bool equals(float f1, float f2) {
-    if (std::abs(f1 - f2) <= EPS)
+bool equals(double d1, double d2) {
+    if (std::abs(d1 - d2) <= EPS)
         return true;
-    return std::abs(f1 - f2) <= EPS * std::max(std::abs(f1), std::abs(f2));
+    return std::abs(d1 - d2) <= EPS * std::max(std::abs(d1), std::abs(d2));
 }
