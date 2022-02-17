@@ -169,8 +169,8 @@ std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Edge edge, c
     Vector m_to_b_normalized = setMag(conn(m, b), 1.0);
     double l_e = len(e_i_to_e_j);
     double r_c = std::sqrt(r_b*r_b - 0.25*l_e*l_e);
-    // ASSERTM(equals(len(conn(e_i, b)), r_b), "ball is placed incorrectly");
-    // ASSERTM(equals(len(conn(e_j, b)), r_b), "ball is placed incorrectly");
+    ASSERTM(equals(len(conn(e_i, b)), r_b), "ball is placed incorrectly");
+    ASSERTM(equals(len(conn(e_j, b)), r_b), "ball is placed incorrectly");
     Vector n = setMag(cross(e_i_to_e_j, m_to_b_normalized), 1.0);
     ASSERTM(equals(n*m_to_b_normalized, 0.0), "normal is not perpendicular to plane(e_i, e_j, b)");
     VertexIndex newVertexIndex;
@@ -184,9 +184,9 @@ std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Edge edge, c
         }
         std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.0), vertices[neighbour], r_b);
         for (Vertex i : intersections) {
-            // ASSERTM(equals(len(conn(e_i, i)), r_b), "intersection is not ball radius away from edgepoint i");
-            // ASSERTM(equals(len(conn(e_j, i)), r_b), "intersection is not ball radius away from edgepoint j");
-            // ASSERTM(equals(len(conn(vertices[neighbour], i)), r_b), "intersection is not ball radius away from neighbour");
+            ASSERTM(equals(len(conn(e_i, i)), r_b), "intersection is not ball radius away from edgepoint i");
+            ASSERTM(equals(len(conn(e_j, i)), r_b), "intersection is not ball radius away from edgepoint j");
+            ASSERTM(equals(len(conn(vertices[neighbour], i)), r_b), "intersection is not ball radius away from neighbour");
             Vector m_to_i_normalized = setMag(conn(m, i), 1.0);
             double p = m_to_b_normalized * m_to_i_normalized;
             // if (equals(i, b)) {
@@ -210,32 +210,32 @@ std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Edge edge, c
         DBOUT << "ball touched no vertex, checked " << neighbours.size() << " neighbours" << std::endl;
         return std::nullopt;
     }
-#ifdef DEBUG
-    DBOUT << "found: " << newVertexIndex << std::endl;
-    DBOUT << "rotating ball to position: (" << newBallPosition.x << "," << newBallPosition.y << "," << newBallPosition.z << "), or " << maxDotProduct << " in dot product" << std::endl;
-    ASSERTM(equals(len(conn(e_i, newBallPosition)), r_b), "new ball is not ball radius away from edgepoint i");
-    ASSERTM(equals(len(conn(e_j, newBallPosition)), r_b), "new ball is not ball radius away from edgepoint j");
-    ASSERTM(equals(len(conn(newBallPosition, vertices[newVertexIndex])), r_b), "new ball is not ball radius away from new vertex");
-    for (VertexIndex neighbour : neighbours) {
-        if (newVertexIndex == neighbour) continue;
-        // if (equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.0)) {
-        //     DBOUT << "[assertion fail] found vertex " << neighbour << " on ball surface with distance to ball: " << len(conn(newBallPosition, vertices[neighbour])) - ballRadius << std::endl;
-        //     std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.0), vertices[neighbour], r_b);
-        //     DBOUT << "[assertion fail] found following intersections for neighbour:" << std::endl;
-        //     for (Vertex i : intersections) {
-        //         DBOUT << "[assertion fail] (" << i.x << "," << i.y << "," << i.z << "), which is a dot product of: " << m_to_b_normalized*setMag(conn(m, i), 1.0) << std::endl;
-        //         DBOUT << "[assertion fail] this intersection " << (equals(newBallPosition, i) ? "equals " : "does not equal ") << "the new ball position" << std::endl;
-        //         DBOUT << "[assertion fail] this intersection and the ball position have a distance of " << len(conn(newBallPosition, i)) << std::endl;
-        //     }
-        // }
-        // ASSERTM(!equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.0), "vertices lay on the ball surface, those should have been captured before");
-        // if (len(conn(newBallPosition, vertices[neighbour])) <= ballRadius) {
-        //     DBOUT << "[assertion fail] found vertex " << neighbour << " in ball" << std::endl;
-        //     DBOUT << "[assertion fail] " << neighbour << " has distance " << len(conn(newBallPosition, vertices[neighbour])) << " to ball center" << std::endl;
-        // }
-        // ASSERTM(len(conn(newBallPosition, vertices[neighbour])) > ballRadius, "vertices lay inside the ball");
-    }
-#endif
+    #ifdef DEBUG
+        DBOUT << "found: " << newVertexIndex << std::endl;
+        DBOUT << "rotating ball to position: (" << newBallPosition.x << "," << newBallPosition.y << "," << newBallPosition.z << "), or " << maxDotProduct << " in dot product" << std::endl;
+        ASSERTM(equals(len(conn(e_i, newBallPosition)), r_b), "new ball is not ball radius away from edgepoint i");
+        ASSERTM(equals(len(conn(e_j, newBallPosition)), r_b), "new ball is not ball radius away from edgepoint j");
+        ASSERTM(equals(len(conn(newBallPosition, vertices[newVertexIndex])), r_b), "new ball is not ball radius away from new vertex");
+        for (VertexIndex neighbour : neighbours) {
+            if (newVertexIndex == neighbour) continue;
+            if (equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.0)) {
+                DBOUT << "[assertion fail] found vertex " << neighbour << " on ball surface with distance to ball: " << len(conn(newBallPosition, vertices[neighbour])) - ballRadius << std::endl;
+                std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.0), vertices[neighbour], r_b);
+                DBOUT << "[assertion fail] found following intersections for neighbour:" << std::endl;
+                for (Vertex i : intersections) {
+                    DBOUT << "[assertion fail] (" << i.x << "," << i.y << "," << i.z << "), which is a dot product of: " << m_to_b_normalized*setMag(conn(m, i), 1.0) << std::endl;
+                    DBOUT << "[assertion fail] this intersection " << (equals(newBallPosition, i) ? "equals " : "does not equal ") << "the new ball position" << std::endl;
+                    DBOUT << "[assertion fail] this intersection and the ball position have a distance of " << len(conn(newBallPosition, i)) << std::endl;
+                }
+            }
+            ASSERTM(!equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.0), "vertices lay on the ball surface, those should have been captured before");
+            if (len(conn(newBallPosition, vertices[neighbour])) <= ballRadius) {
+                DBOUT << "[assertion fail] found vertex " << neighbour << " in ball" << std::endl;
+                DBOUT << "[assertion fail] " << neighbour << " has distance " << len(conn(newBallPosition, vertices[neighbour])) << " to ball center" << std::endl;
+            }
+            ASSERTM(len(conn(newBallPosition, vertices[neighbour])) > ballRadius, "vertices lay inside the ball");
+        }
+    #endif
     return std::make_tuple(newVertexIndex, newBallPosition);
 }
 
