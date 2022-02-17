@@ -213,9 +213,6 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
                 assertm(used(neighbour), "unused vertices should not be found before rolling (they should already have been added in a prior rolling step)");
                 continue;
             }
-            // if (len(conn(i, b)) < 0.01f) {
-            //     DBOUT << "-- " << len(conn(i, b)) << std::endl;
-            // }
             if (n * m_to_i_normalized < 0.0) {
                 // in this case ball is rotated more than 180°, we use the "extended" scalar product 
                 p = -p - 2.0;
@@ -266,7 +263,8 @@ std::optional<std::tuple<std::vector<VertexIndex>, Vertex>> BPA::ballPivot(const
         }
         assertm(!equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.0), "vertices lay on the ball surface, those should have been captured before");
         if (len(conn(newBallPosition, vertices[neighbour])) <= ballRadius) {
-            DBOUT << "found vertex " << neighbour << " in ball" << std::endl;
+            DBOUT << "[assertion fail] found vertex " << neighbour << " in ball" << std::endl;
+            DBOUT << "[assertion fail] " << neighbour << " has distance " << len(conn(newBallPosition, vertices[neighbour])) << " to ball center" << std::endl;
         }
         assertm(len(conn(newBallPosition, vertices[neighbour])) > ballRadius, "vertices lay inside the ball");
     }
