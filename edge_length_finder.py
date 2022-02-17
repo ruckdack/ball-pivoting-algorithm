@@ -74,6 +74,7 @@ class ObjLoader(object):
         self.longest_edge = current_longest
 
     def calc_circumscribed_circle_radius_from_edge(self):
+        print('max corners', self.max_corners)
         self.circumscribed_circle_radius = self.longest_edge / 2 * csc(math.pi / self.max_corners)
 
 if len(sys.argv) != 2:

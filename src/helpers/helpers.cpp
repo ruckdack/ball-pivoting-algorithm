@@ -2,6 +2,7 @@
 
 #include <regex>
 #include <cstdarg>
+#include <cmath>
 
 #define EPS 1.0e-10f
 
@@ -39,4 +40,8 @@ bool equals(double d1, double d2) {
     if (std::abs(d1 - d2) <= EPS)
         return true;
     return std::abs(d1 - d2) <= EPS * std::max(std::abs(d1), std::abs(d2));
+}
+
+double roundToDigits(double value, size_t digits) {
+    return std::round(value * std::pow(10.0, digits)) / std::pow(10.0, digits);
 }

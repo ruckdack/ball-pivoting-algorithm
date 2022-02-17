@@ -37,6 +37,12 @@ double dist(const Vertex from, const Vertex to) {
     return len(conn(from, to));
 }
 
+bool same(const Vertex vertex1, const Vertex vertex2) {
+    return vertex1.x == vertex2.x 
+        && vertex1.y == vertex2.y 
+        && vertex1.z == vertex2.z;
+}
+
 bool equals(const Vertex vertex1, const Vertex vertex2) {
     return equals(vertex1.x, vertex2.x) 
         && equals(vertex1.y, vertex2.y) 

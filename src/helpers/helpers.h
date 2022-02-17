@@ -10,4 +10,5 @@ bool pathSyntaxValid(std::string path);
 template <typename T> std::vector<T> convertFromListToVector(std::list<T> &list);
 template <typename T> bool contains(std::list<T> list, T element);
 bool equals(double f1, double f2);
+double roundToDigits(double value, size_t digits);
 #include "helpers_templates.h"

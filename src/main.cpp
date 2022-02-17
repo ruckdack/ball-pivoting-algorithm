@@ -6,6 +6,7 @@
 #include <iostream>
 #include <string>
 #include <cmath>
+#include <chrono>
 
 #include "trace.h"
 
@@ -30,6 +31,7 @@ int main(int argc, char *argv[]) {
         Vertices vertices = IO::readVertices(inputPath);
         INFOUT << "Read " << vertices.size() << " vertices." << std::endl;
         INFOUT << "Running computations..." << std::endl;
+        auto start = std::chrono::steady_clock::now();
         BPA bpa(vertices, ballRadius);
         size_t counter = 1;
         while (!bpa.isDone()) {
@@ -45,8 +47,11 @@ int main(int argc, char *argv[]) {
             #endif
         }
         std::list<Triangle> faces = bpa.getFaces();
-        INFOUT << "Reconstructed " << faces.size() << (faces.size() == 1 ? " triangle. " : " triangles.") << std::endl;
-        INFOUT << "Used " << bpa.numOfUsedVertices() << (bpa.numOfUsedVertices() == 1 ? " vertex (" : " vertices (") << std::round(bpa.numOfUsedVertices() / static_cast<double>(vertices.size()) * 100.0) / 100.0 << "% of total vertices amount)." << std::endl;
+        auto end = std::chrono::steady_clock::now();
+        std::chrono::duration<double> elapsed_seconds = end-start;
+        INFOUT << "Reconstructed " << faces.size() << (faces.size() == 1 ? " triangle " : " triangles") << " in " << std::round(elapsed_seconds.count()) << " seconds." << std::endl;
+        INFOUT << "Used " << bpa.numOfUsedVertices() << (bpa.numOfUsedVertices() == 1 ? " vertex (" : " vertices (")
+               << roundToDigits(bpa.numOfUsedVertices() / static_cast<double>(vertices.size()), 2) << "% of total vertices amount)." << std::endl;
         if (bpa.boundaryWasFound()) {
             INFOUT << "A boundary was found." << std::endl;
         }

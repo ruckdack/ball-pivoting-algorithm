@@ -44,6 +44,7 @@ bool operator!=(const Triangle triangle1, const Triangle triangle2);
 Vector conn(const Vertex from, const Vertex to);
 double dist(const Vertex from, const Vertex to);
 bool equals(const Vertex vertex1, const Vertex vertex2);
+bool same(const Vertex vertex1, const Vertex vertex2);
 
 Vertex toVertex(const Vector vector);
 Vector operator+(const Vector vector1, const Vector vector2);
