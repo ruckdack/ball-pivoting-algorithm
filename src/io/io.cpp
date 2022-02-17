@@ -43,9 +43,9 @@ void IO::writeMesh(std::string path, Vertices &vertices, std::list<Triangle> &fa
 Vertex IO::readVertex(std::vector<std::string> splittedLine) {
     if (splittedLine.size() != 4) 
         throw std::runtime_error("Wrong file format.");
-    double x = std::stof(splittedLine[1]);
-    double y = std::stof(splittedLine[2]);
-    double z = std::stof(splittedLine[3]);
+    float x = std::stof(splittedLine[1]);
+    float y = std::stof(splittedLine[2]);
+    float z = std::stof(splittedLine[3]);
     return {x, y, z};
 }
 

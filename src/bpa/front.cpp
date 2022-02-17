@@ -176,7 +176,7 @@ bool Front::loopIntegrity(Loop &loop) {
     return true;
 }
 
-// checks for loop order and double edges
+// checks for loop order and float edges
 bool Front::integrity() {
     for (Loop &loop : front) {
         if (!loopIntegrity(loop)) {
@@ -191,7 +191,7 @@ bool Front::integrity() {
                 if (*it != loop) {
                     for (Edge &e : *it) {
                         if (edge == e) {
-                            DBOUT << "front contains double edge" << std::endl;
+                            DBOUT << "front contains float edge" << std::endl;
                             return false;
                         }
                     }

@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
         ERROUT << "Not enough arguments." << std::endl;
         return 0;
     }
-    double ballRadius = std::stof(argv[1]);
+    float ballRadius = std::stof(argv[1]);
     std::string inputPath(argv[2]);
     std::string outputPath(argv[3]);
     if (!pathSyntaxValid(inputPath) || !pathSyntaxValid(outputPath)) {
@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
             bpa.step();
             // only for debugging
             #ifdef DEBUG
-            if (false) {
+            if (true) {
                 std::list<Triangle> faces = bpa.getFaces();
                 std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
                 IO::writeMesh(path, vertices, faces);
@@ -48,10 +48,10 @@ int main(int argc, char *argv[]) {
         }
         std::list<Triangle> faces = bpa.getFaces();
         auto end = std::chrono::steady_clock::now();
-        std::chrono::duration<double> elapsed_seconds = end-start;
+        std::chrono::duration<float> elapsed_seconds = end-start;
         INFOUT << "Reconstructed " << faces.size() << (faces.size() == 1 ? " triangle " : " triangles") << " in " << std::round(elapsed_seconds.count()) << " seconds." << std::endl;
         INFOUT << "Used " << bpa.numOfUsedVertices() << (bpa.numOfUsedVertices() == 1 ? " vertex (" : " vertices (")
-               << roundToDigits(bpa.numOfUsedVertices() / static_cast<double>(vertices.size()), 2) << "% of total vertices amount)." << std::endl;
+               << roundToDigits(bpa.numOfUsedVertices() / static_cast<float>(vertices.size()), 2) << "% of total vertices amount)." << std::endl;
         if (bpa.boundaryWasFound()) {
             INFOUT << "A boundary was found." << std::endl;
         }

@@ -4,7 +4,7 @@
 #include <cstdarg>
 #include <cmath>
 
-#define EPS 1.0e-10f
+#define EPS 1.0e-5
 
 std::vector<std::string> split(const std::string str, const char delimiter) {
     std::vector<size_t> locations = findChar(str, delimiter);
@@ -43,5 +43,5 @@ bool equals(double d1, double d2) {
 }
 
 double roundToDigits(double value, size_t digits) {
-    return std::round(value * std::pow(10.0, digits)) / std::pow(10.0, digits);
+    return std::round(value * std::pow(10.f, digits)) / std::pow(10.f, digits);
 }
