@@ -31,21 +31,32 @@ struct Vector {
     float z;
 };
 
+struct Circle {
+    Vertex center;
+    float radius;
+    Vector normal;
+};
+
+struct Sphere {
+    Vertex center;
+    float radius;
+};
+
 typedef std::vector<Vertex> Vertices;
 typedef std::list<Edge> Loop;
 
 std::string toString(const Edge edge);
 
-bool operator==(const Edge edge1, const Edge edge2);
-bool operator!=(const Edge edge1, const Edge edge2);
-bool operator==(const Triangle triangle1, const Triangle triangle2);
-bool operator!=(const Triangle triangle1, const Triangle triangle2);
+const bool operator==(const Edge edge1, const Edge edge2);
+const bool operator!=(const Edge edge1, const Edge edge2);
+const bool operator==(const Triangle triangle1, const Triangle triangle2);
+const bool operator!=(const Triangle triangle1, const Triangle triangle2);
 
-Vector conn(const Vertex from, const Vertex to);
-float dist(const Vertex from, const Vertex to);
 bool equals(const Vertex vertex1, const Vertex vertex2);
 bool same(const Vertex vertex1, const Vertex vertex2);
 
+Vector conn(const Vertex from, const Vertex to);
+float dist(const Vertex from, const Vertex to);
 Vertex toVertex(const Vector vector);
 Vector operator+(const Vector vector1, const Vector vector2);
 Vector operator-(const Vector vector1, const Vector vector2);

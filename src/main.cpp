@@ -38,7 +38,7 @@ int main(int argc, char *argv[]) {
             bpa.step();
             // only for debugging
             #ifdef DEBUG
-            if (true) {
+            if (false) {
                 std::list<Triangle> faces = bpa.getFaces();
                 std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
                 IO::writeMesh(path, vertices, faces);

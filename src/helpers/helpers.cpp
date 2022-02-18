@@ -36,12 +36,12 @@ bool pathSyntaxValid(std::string path) {
     return std::regex_match(path, re);
 }
 
-bool equals(double d1, double d2) {
+bool equals(float d1, float d2) {
     if (std::abs(d1 - d2) <= EPS)
         return true;
     return std::abs(d1 - d2) <= EPS * std::max(std::abs(d1), std::abs(d2));
 }
 
-double roundToDigits(double value, size_t digits) {
+float roundToDigits(float value, size_t digits) {
     return std::round(value * std::pow(10.f, digits)) / std::pow(10.f, digits);
 }
