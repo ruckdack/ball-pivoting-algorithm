@@ -10,7 +10,7 @@
 class BPA {
     private:
         const Vertices vertices;
-        const float ballRadius;
+        const double ballRadius;
         std::list<Triangle> faces;
         Query query;
         Front front;
@@ -21,12 +21,12 @@ class BPA {
         void printIndexFace(Triangle triangle);
         std::optional<std::tuple<Triangle, Vertex>> findSeedTriangle();
         std::optional<std::tuple<VertexIndex, Vertex>> ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspondingVertex);
-        float calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspondingVertex, const Vertex ballPosition);
-        std::vector<Vertex> intersectCircleSphere(const Vertex circleCenter, const float circleRadius, const Vector circleNormal, const Vertex sphereCenter, const float sphereRadius);
+        double calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspondingVertex, const Vertex ballPosition);
+        std::vector<Vertex> intersectCircleSphere(const Vertex circleCenter, const double circleRadius, const Vector circleNormal, const Vertex sphereCenter, const double sphereRadius);
         std::optional<Circle> intersectSphereSphere(const Sphere sphere1, const Sphere sphere2);
         std::optional<Vertex> calcMinAlongXAxis(const Circle circle);
     public:
-        BPA(const Vertices &vertices, const float ballRadius);
+        BPA(const Vertices &vertices, const double ballRadius);
         bool isDone();
         void step();
         bool boundaryWasFound();

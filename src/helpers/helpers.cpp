@@ -4,7 +4,7 @@
 #include <cstdarg>
 #include <cmath>
 
-#define EPS 1.0e-5
+#define EPS 1.0e-12
 
 std::vector<std::string> split(const std::string str, const char delimiter) {
     std::vector<size_t> locations = findChar(str, delimiter);
@@ -36,12 +36,12 @@ bool pathSyntaxValid(std::string path) {
     return std::regex_match(path, re);
 }
 
-bool equals(float d1, float d2) {
+bool equals(double d1, double d2) {
     if (std::abs(d1 - d2) <= EPS)
         return true;
     return std::abs(d1 - d2) <= EPS * std::max(std::abs(d1), std::abs(d2));
 }
 
-float roundToDigits(float value, size_t digits) {
-    return std::round(value * std::pow(10.f, digits)) / std::pow(10.f, digits);
+double roundToDigits(double value, size_t digits) {
+    return std::round(value * std::pow(10.0, digits)) / std::pow(10.0, digits);
 }

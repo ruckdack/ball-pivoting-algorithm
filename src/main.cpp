@@ -42,8 +42,9 @@ int main(int argc, char *argv[]) {
                 std::list<Triangle> faces = bpa.getFaces();
                 std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
                 IO::writeMesh(path, vertices, faces);
-                counter++;
             }
+            counter++;
+            DBOUT << "count: " << counter << std::endl;
             #endif
         }
         std::list<Triangle> faces = bpa.getFaces();

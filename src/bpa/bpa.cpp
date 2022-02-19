@@ -15,7 +15,7 @@
 #define ASSERTM(eq, msg) assert(((void)msg, eq))
 #define ASSERT(eq) assert(eq)
 
-BPA::BPA(const Vertices &v, const float ballRad)
+BPA::BPA(const Vertices &v, const double ballRad)
 : vertices(v)
 , ballRadius(ballRad)
 , query(vertices, 2*ballRadius)
@@ -63,11 +63,11 @@ void BPA::step() {
                     for (Triangle face : faces) {
                         ASSERTM(face != newFace, "cannot add already reconstructed face again");
                     }
-                    DBOUT << "new triangle: " << std::endl;
-                    printIndexFace(newFace);
                     faces.push_back(newFace);
                     usedVertices.push_back(vertexIndex);
                     front.join(edge, vertexIndex, newBallPosition);
+                    DBOUT << "new triangle: " << std::endl;
+                    printIndexFace(newFace);
                     ASSERT(!front.contains(edge));
                     if (front.contains({vertexIndex, edge.i})) {
                         front.glue({edge.i, vertexIndex}, {vertexIndex, edge.i});
@@ -162,34 +162,35 @@ std::optional<std::tuple<Triangle, Vertex>> BPA::findSeedTriangle() {
 std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspondingVertex) {
 
     std::optional<VertexIndex> skipVertex = std::nullopt;
-    if (correspondingVertex && ignoreForEdges.find(toString(edge) + "@" + std::to_string(correspondingVertex.value())) != ignoreForEdges.end()) {
-        skipVertex = ignoreForEdges[toString(edge) + "@" + std::to_string(correspondingVertex.value())];
-        DBOUT << "skipping: " << skipVertex.value() << std::endl;
-    }
+    // if (correspondingVertex && ignoreForEdges.find(toString(edge) + "@" + std::to_string(correspondingVertex.value())) != ignoreForEdges.end()) {
+    //     skipVertex = ignoreForEdges[toString(edge) + "@" + std::to_string(correspondingVertex.value())];
+    //     DBOUT << "skipping: " << skipVertex.value() << std::endl;
+    // }
 
     std::vector<VertexIndex> neighbours = query.getNeighbourhood(edge);
     Vertex e_i = vertices[edge.i];
     Vertex e_j = vertices[edge.j];
+    DBOUT << std::endl;
     DBOUT << "rolling on: (" << edge.i << "," << edge.j << ")" << std::endl;
     DBOUT << "in coords: (" << e_i.x << "," << e_i.y << "," << e_i.z << ") and (" << e_j.x << "," << e_j.y << "," << e_j.z << ")" << std::endl;
     DBOUT << "ball is at: (" << ballPosition.x << "," << ballPosition.y << "," << ballPosition.z << ")" << std::endl;
     Vertex b = ballPosition;
-    float r_b = ballRadius;
+    double r_b = ballRadius;
 
     Vector e_i_to_e_j = conn(e_i, e_j); // circle plane normal, not normalized
     Vertex m = toVertex(conn({0,0,0}, e_i) + (0.5 * e_i_to_e_j));
     Vector m_to_b = conn(m, b);
-    float l_e = len(e_i_to_e_j);
-    float r_c = std::sqrt(r_b*r_b - 0.25*l_e*l_e);
-    float r_c_sq = r_c*r_c;
+    double l_e = len(e_i_to_e_j);
+    double r_c = std::sqrt(r_b*r_b - 0.25*l_e*l_e);
+    double r_c_sq = r_c*r_c;
     ASSERTM(equals(len(conn(e_i, b)), r_b), "ball is placed incorrectly");
     ASSERTM(equals(len(conn(e_j, b)), r_b), "ball is placed incorrectly");
-    Vector n = setMag(cross(e_i_to_e_j, m_to_b), 1.f);
-    ASSERTM(equals(n*m_to_b, 0.f), "normal is not perpendicular to plane(e_i, e_j, b)");
+    Vector n = setMag(cross(e_i_to_e_j, m_to_b), 1.0);
+    ASSERTM(equals(n*m_to_b, 0.0), "normal is not perpendicular to plane(e_i, e_j, b)");
     VertexIndex newVertexIndex;
     std::optional<VertexIndex> alternativeVertexIndex = std::nullopt;
     bool foundNeighbour = false;
-    float maxDotProduct = correspondingVertex ? calcStartingScalarProduct(e_i, e_j, vertices[correspondingVertex.value()], b) : -1.f;
+    double maxDotProduct = correspondingVertex ? calcStartingScalarProduct(e_i, e_j, vertices[correspondingVertex.value()], b) : -1.0;
     maxDotProduct *= r_c_sq;
     DBOUT << "starting dot product: " << maxDotProduct << ", lays in [-3R², R²]: [" << -3*r_c_sq << ", " << r_c_sq << "]" << std::endl;
     Vertex newBallPosition;
@@ -197,14 +198,14 @@ std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Edge edge, c
         if (correspondingVertex && correspondingVertex.value() == neighbour || skipVertex && skipVertex.value() == neighbour) {
             continue;
         }
-        std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.f), vertices[neighbour], r_b);
+        std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.0), vertices[neighbour], r_b);
         for (Vertex i : intersections) {
             ASSERTM(equals(len(conn(e_i, i)), r_b), "intersection is not ball radius away from edgepoint i");
             ASSERTM(equals(len(conn(e_j, i)), r_b), "intersection is not ball radius away from edgepoint j");
             ASSERTM(equals(len(conn(vertices[neighbour], i)), r_b), "intersection is not ball radius away from neighbour");
             Vector m_to_i = conn(m, i);
-            float p = m_to_b * m_to_i;
-            if (n * m_to_i < 0.f) {
+            double p = m_to_b * m_to_i;
+            if (n * m_to_i < 0.0) {
                 // in this case ball is rotated more than 180°, we use the "extended" scalar product 
                 p = -p - 2*r_c_sq;
             }
@@ -252,9 +253,9 @@ std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Edge edge, c
         ASSERTM(equals(len(conn(newBallPosition, vertices[newVertexIndex])), r_b), "new ball is not ball radius away from new vertex");
         for (VertexIndex neighbour : neighbours) {
             if (newVertexIndex == neighbour || alternativeVertexIndex && alternativeVertexIndex.value() == neighbour || skipVertex && skipVertex.value() == neighbour) continue;
-            if (equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.f)) {
+            if (equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.0)) {
                 DBOUT << "[assertion fail] found vertex " << neighbour << " on ball surface with distance to ball: " << len(conn(newBallPosition, vertices[neighbour])) - ballRadius << std::endl;
-                std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.f), vertices[neighbour], r_b);
+                std::vector<Vertex> intersections = intersectCircleSphere(m, r_c, setMag(e_i_to_e_j, 1.0), vertices[neighbour], r_b);
                 DBOUT << "[assertion fail] found following intersections for neighbour:" << std::endl;
                 for (Vertex i : intersections) {
                     DBOUT << "[assertion fail] (" << i.x << "," << i.y << "," << i.z << "), which is a dot product of: " << m_to_b*conn(m, i) << std::endl;
@@ -271,65 +272,64 @@ std::optional<std::tuple<VertexIndex, Vertex>> BPA::ballPivot(const Edge edge, c
             ASSERTM(len(conn(newBallPosition, vertices[neighbour])) >= ballRadius, "vertices lay inside the ball");
         }
     #endif
-    DBOUT << std::endl; 
     return std::make_tuple(newVertexIndex, newBallPosition);
 }
 
-float BPA::calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspondingVertex, const Vertex ballPosition) {
+double BPA::calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspondingVertex, const Vertex ballPosition) {
     Vector edgeIJ = conn(edgeI, edgeJ);
-    Vector planeNormal = setMag(cross(edgeIJ, conn(edgeI, correspondingVertex)), 1.f);
-    Vector awayFromEdgeIJ = setMag(cross(edgeIJ, planeNormal), 1.f);
+    Vector planeNormal = setMag(cross(edgeIJ, conn(edgeI, correspondingVertex)), 1.0);
+    Vector awayFromEdgeIJ = setMag(cross(edgeIJ, planeNormal), 1.0);
     Vertex midPoint = toVertex(conn({0,0,0}, edgeI) + (0.5 * edgeIJ));
-    Vector midPointToBallPos = setMag(conn(midPoint, ballPosition), 1.f);
+    Vector midPointToBallPos = setMag(conn(midPoint, ballPosition), 1.0);
     // could be optimized: is it possible to only calculate in scalar product?
-    float radian = std::acos(std::clamp(midPointToBallPos*planeNormal, -1.f, 1.f));
-    ASSERTM(radian >= 0.f, "ball is on wrong side");
-    float alpha = midPointToBallPos*awayFromEdgeIJ < 0.f ? M_PI_2-radian+0.0001f : M_PI_2+radian+0.0001f;
-    float maxPossibleAngle = 2*M_PI - 2*alpha;
+    double radian = std::acos(std::clamp(midPointToBallPos*planeNormal, -1.0, 1.0));
+    ASSERTM(radian >= 0.0, "ball is on wrong side");
+    double alpha = midPointToBallPos*awayFromEdgeIJ < 0.0 ? M_PI_2-radian+0.0001f : M_PI_2+radian+0.0001f;
+    double maxPossibleAngle = 2*M_PI - 2*alpha;
     maxPossibleAngle = maxPossibleAngle * 0.9f;
-    if (maxPossibleAngle > M_PI) return -std::cos(maxPossibleAngle) - 2.f;
+    if (maxPossibleAngle > M_PI) return -std::cos(maxPossibleAngle) - 2.0;
     return std::cos(maxPossibleAngle);
 }
 
 
-std::vector<Vertex> BPA::intersectCircleSphere(const Vertex circleCenter, const float circleRadius, const Vector circleNormal, const Vertex sphereCenter, const float sphereRadius) {
+std::vector<Vertex> BPA::intersectCircleSphere(const Vertex circleCenter, const double circleRadius, const Vector circleNormal, const Vertex sphereCenter, const double sphereRadius) {
     ASSERT(!std::isnan(circleCenter.x) && !std::isnan(circleCenter.y) && !std::isnan(circleCenter.z));
     ASSERT(!std::isnan(sphereCenter.x) && !std::isnan(sphereCenter.y) && !std::isnan(sphereCenter.z));
     ASSERT(!std::isnan(circleNormal.x) && !std::isnan(circleNormal.y) && !std::isnan(circleNormal.z));
-    ASSERT(circleRadius > 0.f);
-    ASSERT(sphereRadius > 0.f);
-    ASSERTM(equals(len(circleNormal), 1.f), "circle normal is not normalized");
+    ASSERT(circleRadius > 0.0);
+    ASSERT(sphereRadius > 0.0);
+    ASSERTM(equals(len(circleNormal), 1.0), "circle normal is not normalized");
     std::vector<Vertex> intersections;
     if (len(conn(circleCenter, sphereCenter)) > circleRadius + sphereRadius) {
         return intersections;
     }
     // first intersect circle plane with sphere -> we get a second circle in the same plane
     // intersect line with direction of circleNormal through sphereCenter with circle plane
-    float scale = conn(sphereCenter, circleCenter) * circleNormal;
+    double scale = conn(sphereCenter, circleCenter) * circleNormal;
     if (std::abs(scale) > sphereRadius) return intersections;
     Vertex intersectionCircleCenter = toVertex(conn({0,0,0}, sphereCenter) + setMag(circleNormal, scale));
-    float intersectionCircleRadius = std::sqrt(sphereRadius*sphereRadius - scale*scale);
+    double intersectionCircleRadius = std::sqrt(sphereRadius*sphereRadius - scale*scale);
 
 
     // second we intersect both circles
     // we use notation from http://paulbourke.net/geometry/circlesphere/
 
     Vertex P_0 = circleCenter;
-    float r_0 = circleRadius;
+    double r_0 = circleRadius;
     Vertex P_1 = intersectionCircleCenter;
-    float r_1 = intersectionCircleRadius;
+    double r_1 = intersectionCircleRadius;
 
     Vector P_0_to_P_1 = conn(P_0, P_1);
-    float d = len(P_0_to_P_1);
+    double d = len(P_0_to_P_1);
     if (d < std::abs(r_0 - r_1)) return intersections;
     if (d > r_0 + r_1) return intersections;
-    float a = (r_0*r_0 - r_1*r_1 + d*d) / (2*d);
+    double a = (r_0*r_0 - r_1*r_1 + d*d) / (2*d);
     Vertex P_2 = toVertex(conn({0,0,0}, P_0) + setMag(P_0_to_P_1, a));
     if (equals(r_0, std::abs(a))) {
         intersections.push_back(toVertex(conn({0,0,0}, P_2)));
         return intersections;
     }
-    float h = std::sqrt(r_0*r_0 - a*a);
+    double h = std::sqrt(r_0*r_0 - a*a);
     Vector dir_h = cross(circleNormal, P_0_to_P_1);
     Vertex i1 = toVertex(conn({0,0,0}, P_2) + setMag(dir_h, h));
     Vertex i2 = toVertex(conn({0,0,0}, P_2) + setMag(dir_h, -h));
@@ -342,47 +342,49 @@ std::vector<Vertex> BPA::intersectCircleSphere(const Vertex circleCenter, const 
 
 std::optional<Circle> BPA::intersectSphereSphere(const Sphere sphere1, const Sphere sphere2) {
     Vertex P_0 = sphere1.center;
-    float r_0 = sphere1.radius;
+    double r_0 = sphere1.radius;
     Vertex P_1 = sphere2.center;
-    float r_1 = sphere2.radius;
+    double r_1 = sphere2.radius;
 
     Vector P_0_to_P_1 = conn(P_0, P_1);
-    float d = len(P_0_to_P_1);
+    double d = len(P_0_to_P_1);
     if (d < std::abs(r_0 - r_1)) return std::nullopt;
     if (d > r_0 + r_1) return std::nullopt;
-    float a = (r_0*r_0 - r_1*r_1 + d*d) / (2*d);
+    double a = (r_0*r_0 - r_1*r_1 + d*d) / (2*d);
     Vertex P_2 = toVertex(conn({0,0,0}, P_0) + setMag(P_0_to_P_1, a));
     if (equals(r_0, std::abs(a))) {
         return std::nullopt;
     }
-    float h = std::sqrt(r_0*r_0 - a*a);
+    double h = std::sqrt(r_0*r_0 - a*a);
     Circle intersections = {};
     intersections.center = toVertex(conn({0,0,0}, P_2));
     intersections.radius = h;
-    intersections.normal = setMag(P_0_to_P_1, 1.f); 
+    intersections.normal = setMag(P_0_to_P_1, 1.0); 
     return intersections;
 }
 
 std::optional<Vertex> BPA::calcMinAlongXAxis(const Circle circle) {
-    ASSERTM(equals(len(circle.normal), 1.f), "circle normal is not normalized");
+    ASSERTM(equals(len(circle.normal), 1.0), "circle normal is not normalized");
     Vector negXAxis = {-1,0,0};
-    if (equals(circle.normal.y, 0.f) && equals(circle.normal.z, 0.f)) {
-        // circle lays in y-z-plane, no min x
+    if (equals(circle.normal * negXAxis, -1.0)) {
+    //     // circle lays in y-z-plane, no min x
         return std::nullopt;
     }
-    float angleToNegXAxis = std::acos(negXAxis*circle.normal);
+    double angleToNegXAxis = std::acos(negXAxis*circle.normal);
     // cos(angle - 90deg) = sin(angle)
-    float minXValue = -circle.radius * std::sin(angleToNegXAxis);
-    Vector minXValueVector = conn({0,0,0}, circle.center) + Vector({minXValue, 0.f, 0.f});
+    double minXValue = -circle.radius * std::sin(angleToNegXAxis);
+    Vector minXValueVector = conn({0,0,0}, circle.center) + Vector({minXValue, 0.0, 0.0});
     // project normal onto y-z-plane at minXValue
-    Vector proj = {0.f, circle.normal.y, circle.normal.z};
+    Vector proj = {0.0, circle.normal.y, circle.normal.z};
     // intersect proj with circle plane
     // notation from https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
+    // t = ((p_0 - l_0) * n) / (l * n)
     // p_0: circle.center
     // n: circle.normal
     // l_0: minXValueVector
     // l: proj
-    float t = ((conn({0,0,0}, circle.center) - minXValueVector) * circle.normal) / (proj * circle.normal);
+    double t = ((conn({0,0,0}, circle.center) - minXValueVector) * circle.normal) / (proj * circle.normal);
     Vertex intersection = toVertex(minXValueVector + t * proj);
+    ASSERTM(equals(len(conn(intersection, circle.center)), circle.radius), "found intersection is not circle.radius away from circle.center => not on circle");
     return intersection;
 }

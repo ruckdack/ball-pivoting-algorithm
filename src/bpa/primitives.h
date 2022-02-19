@@ -5,9 +5,9 @@
 #include <list>
 
 struct Vertex {
-    float x;
-    float y;
-    float z;
+    double x;
+    double y;
+    double z;
 };
 
 typedef size_t VertexIndex;
@@ -26,20 +26,20 @@ struct Triangle {
 };
 
 struct Vector {
-    float x;
-    float y;
-    float z;
+    double x;
+    double y;
+    double z;
 };
 
 struct Circle {
     Vertex center;
-    float radius;
+    double radius;
     Vector normal;
 };
 
 struct Sphere {
     Vertex center;
-    float radius;
+    double radius;
 };
 
 typedef std::vector<Vertex> Vertices;
@@ -56,12 +56,12 @@ bool equals(const Vertex vertex1, const Vertex vertex2);
 bool same(const Vertex vertex1, const Vertex vertex2);
 
 Vector conn(const Vertex from, const Vertex to);
-float dist(const Vertex from, const Vertex to);
+double dist(const Vertex from, const Vertex to);
 Vertex toVertex(const Vector vector);
 Vector operator+(const Vector vector1, const Vector vector2);
 Vector operator-(const Vector vector1, const Vector vector2);
-float operator*(const Vector vector1, const Vector vector2);
-Vector operator*(const float scale, const Vector vector);
+double operator*(const Vector vector1, const Vector vector2);
+Vector operator*(const double scale, const Vector vector);
 Vector cross(const Vector vector1, const Vector vector2);
-float len(const Vector vector);
-Vector setMag(const Vector vector, const float newMag);
+double len(const Vector vector);
+Vector setMag(const Vector vector, const double newMag);
