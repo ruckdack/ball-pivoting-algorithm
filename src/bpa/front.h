@@ -8,11 +8,6 @@
 #include <map>
 
 class Front {
-    struct ActiveEdge {
-        Edge edge;
-        Vertex ballPosition;
-        VertexIndex correspondingVertex;
-    };
     private:
         std::list<Loop> front;
         std::list<Edge> boundary;
@@ -23,6 +18,11 @@ class Front {
         bool loopIntegrity(Loop &loop);
         bool integrity();
     public:
+        struct ActiveEdge {
+            Edge edge;
+            Vertex ballPosition;
+            VertexIndex correspondingVertex;
+        };
         Front() = default;
         std::optional<ActiveEdge> getActiveEdge();
         void join(Edge edge, VertexIndex vertexIndex, Vertex ballPosition);

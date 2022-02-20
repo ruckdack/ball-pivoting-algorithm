@@ -3,7 +3,7 @@
 #include "primitives.h"
 #include "query.h"
 #include "front.h"
-#include "trace.h"
+#include "../trace.h"
 
 #include <list>
 #include <optional>
@@ -11,11 +11,12 @@
 
 class BPA {
     private:
-        struct SeedTriangle {
+        struct SeedTriangleResult {
             Triangle triangle;
             Vertex ballPosition;
         };
         struct PivotResult {
+            Edge pivotEdge;
             VertexIndex foundVertex;
             Vertex ballPosition;
         };
@@ -27,9 +28,11 @@ class BPA {
         Front front;
         bool done;
         std::list<VertexIndex> usedVertices;
+        void insertSeedTriangle(SeedTriangleResult seedTriangleResult);
+        void insertPivotResult(PivotResult pivotResult);
         void step();
         bool used(VertexIndex vertexIndex);
-        std::optional<SeedTriangle> findSeedTriangle();
+        std::optional<SeedTriangleResult> findSeedTriangle();
         std::optional<PivotResult> ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspondingVertexIndex);
         double calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspondingVertex, const Vertex ballPosition);
         std::vector<Vertex> intersectCircleSphere(const Circle circle, const Sphere sphere);
