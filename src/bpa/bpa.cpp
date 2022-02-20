@@ -47,9 +47,9 @@ BPA::Result BPA::run() {
     return result;
 }
 
-void BPA::insertSeedTriangle(BPA::SeedTriangleResult seedTriangleResult) {
-    Triangle seedTriangle = seedTriangleResult.triangle;
-    Vertex newBallPosition = seedTriangleResult.ballPosition;
+void BPA::insertSeedTriangle(BPA::PivotResult pivotResult) {
+    Triangle seedTriangle = { pivotResult.edge.j, pivotResult.edge.i, pivotResult.vertex};
+    Vertex newBallPosition = pivotResult.ballPosition;
     faces.push_back(seedTriangle);
     DBOUT << "inital triangle: " << std::endl; 
     printFaceIndicees(seedTriangle);
@@ -63,8 +63,8 @@ void BPA::insertSeedTriangle(BPA::SeedTriangleResult seedTriangleResult) {
 }
 
 void BPA::insertPivotResult(BPA::PivotResult pivotResult) {
-    VertexIndex vertexIndex = pivotResult.foundVertex;
-    Edge edge = pivotResult.pivotEdge;
+    Edge edge = pivotResult.edge;
+    VertexIndex vertexIndex = pivotResult.vertex;
     Vertex newBallPosition = pivotResult.ballPosition;
     if (!used(vertexIndex) || front.contains(vertexIndex)) {
         Triangle newFace = {edge.i, vertexIndex, edge.j};
@@ -89,8 +89,8 @@ void BPA::insertPivotResult(BPA::PivotResult pivotResult) {
 
 void BPA::step() {
     if (faces.size() == 0) {
-        if (std::optional<SeedTriangleResult> optionalSeedTriangle = findSeedTriangle()) {
-            insertSeedTriangle(optionalSeedTriangle.value());
+        if (std::optional<PivotResult> optionalPivotResult = findSeedTriangle()) {
+            insertSeedTriangle(optionalPivotResult.value());
         } else {
             done = true;
             INFOUT << "Found no seed triangle." << std::endl;
@@ -112,7 +112,7 @@ void BPA::step() {
     }
 }
 
-std::optional<BPA::SeedTriangleResult> BPA::findSeedTriangle() {
+std::optional<BPA::PivotResult> BPA::findSeedTriangle() {
     VertexIndex minVertex = 0;
     for (VertexIndex i = 0; i < vertices.size(); i++) {
         if (vertices[i].x < vertices[minVertex].x) {
@@ -164,15 +164,9 @@ std::optional<BPA::SeedTriangleResult> BPA::findSeedTriangle() {
             DBOUT << "inital ball rolling touched no vertex" << std::endl;
             return std::nullopt;
         }
-        VertexIndex vertexIndex = optionalVertexIndex.value().foundVertex;
-        Vertex newBallPosition = optionalVertexIndex.value().ballPosition;
-        Triangle seedTriangle = {firstEdge.i, firstEdge.j, vertexIndex};
-        return SeedTriangleResult{seedTriangle, newBallPosition};
+        return optionalVertexIndex.value();
     }
-    VertexIndex vertexIndex = optionalVertexIndex.value().foundVertex;
-    Vertex newBallPosition = optionalVertexIndex.value().ballPosition;
-    Triangle seedTriangle = {firstEdge.j, firstEdge.i, vertexIndex};
-    return SeedTriangleResult{seedTriangle, newBallPosition};
+    return optionalVertexIndex.value();
 }
 
 std::optional<BPA::PivotResult> BPA::ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspondingVertex) {
@@ -278,8 +272,8 @@ std::optional<BPA::PivotResult> BPA::ballPivot(const Edge edge, const Vertex bal
         }
     #endif
     PivotResult pivotResult = {};
-    pivotResult.pivotEdge = edge;
-    pivotResult.foundVertex = newVertexIndex;
+    pivotResult.edge = edge;
+    pivotResult.vertex = newVertexIndex;
     pivotResult.ballPosition = newBallPosition;
     return pivotResult;
 }

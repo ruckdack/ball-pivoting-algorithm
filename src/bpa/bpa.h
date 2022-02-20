@@ -11,13 +11,9 @@
 
 class BPA {
     private:
-        struct SeedTriangleResult {
-            Triangle triangle;
-            Vertex ballPosition;
-        };
         struct PivotResult {
-            Edge pivotEdge;
-            VertexIndex foundVertex;
+            Edge edge;
+            VertexIndex vertex;
             Vertex ballPosition;
         };
         const Vertices vertices;
@@ -28,11 +24,11 @@ class BPA {
         Front front;
         bool done;
         std::list<VertexIndex> usedVertices;
-        void insertSeedTriangle(SeedTriangleResult seedTriangleResult);
+        void insertSeedTriangle(PivotResult pivotResult);
         void insertPivotResult(PivotResult pivotResult);
         void step();
         bool used(VertexIndex vertexIndex);
-        std::optional<SeedTriangleResult> findSeedTriangle();
+        std::optional<PivotResult> findSeedTriangle();
         std::optional<PivotResult> ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspondingVertexIndex);
         double calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspondingVertex, const Vertex ballPosition);
         std::vector<Vertex> intersectCircleSphere(const Circle circle, const Sphere sphere);
