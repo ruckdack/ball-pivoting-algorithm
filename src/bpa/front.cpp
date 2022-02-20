@@ -1,3 +1,5 @@
+#include "front.h"
+
 #include "bpa.h"
 #include "../helpers/helpers.h"
 #include "../trace.h"
@@ -5,11 +7,8 @@
 #include <cassert>
 #include <iostream>
 
-Front::Front(const Vertices &v) 
-: vertices(v) {}
-
 std::optional<std::tuple<Edge, Vertex, VertexIndex>> Front::getActiveEdge() {
-    assert(integrity());
+    ASSERT(integrity());
     for (Loop loop : front) {
         for (Edge edge : loop) {
             if (!boundaryContains(edge)) {
@@ -23,7 +22,7 @@ std::optional<std::tuple<Edge, Vertex, VertexIndex>> Front::getActiveEdge() {
 
 // some ballPosition and correspondingTriangle entries could be deleted here
 void Front::join(Edge edge, VertexIndex vertexIndex, Vertex ballPosition) {
-    assert(integrity());
+    ASSERT(integrity());
     for (Loop &loop : front) {
         auto edgeIter = std::find(loop.begin(), loop.end(), edge);
         if (edgeIter != loop.end()) {
@@ -36,16 +35,16 @@ void Front::join(Edge edge, VertexIndex vertexIndex, Vertex ballPosition) {
             ballPositions[toString(edge2)] = ballPosition;
             correspondingTriangle[toString(edge2)] = edge.i;
             loop.erase(edgeIter);
-            assert(integrity());
-            assert(!contains(edge));
+            ASSERT(integrity());
+            ASSERT(!contains(edge));
             return;
         }
     }
-    assert(false);
+    ASSERT(false);
 }
 
 void Front::glue(Edge edge1, Edge edge2) {
-    assert(edge1.i == edge2.j && edge1.j == edge2.i);
+    ASSERT(edge1.i == edge2.j && edge1.j == edge2.i);
     std::list<Loop>::iterator loop1Iterator;
     std::list<Edge>::iterator edge1Iterator;
     std::list<Loop>::iterator loop2Iterator;
@@ -60,8 +59,8 @@ void Front::glue(Edge edge1, Edge edge2) {
                 // trivial loop
                 DBOUT << "trivial loop: (" << edge1.i << "," << edge1.j << ")" << std::endl;
                 front.erase(loopIter);
-                assert(!contains(edge1) && !contains(edge2));
-                assert(integrity());
+                ASSERT(!contains(edge1) && !contains(edge2));
+                ASSERT(integrity());
                 return;
 
             }
@@ -70,8 +69,8 @@ void Front::glue(Edge edge1, Edge edge2) {
                 DBOUT << "consec on same loop" << std::endl;
                 loop.erase(it1);
                 loop.erase(it2);
-                assert(!contains(edge1) && !contains(edge2));
-                assert(integrity());
+                ASSERT(!contains(edge1) && !contains(edge2));
+                ASSERT(integrity());
                 return;
             }
             // not consecutive on same loop
@@ -82,13 +81,13 @@ void Front::glue(Edge edge1, Edge edge2) {
                 it2 = it1;
                 it1 = temp;
             }
-            assert(std::distance(loop.begin(), it1) <= std::distance(loop.begin(), it2));
+            ASSERT(std::distance(loop.begin(), it1) <= std::distance(loop.begin(), it2));
             secondLoop.splice(secondLoop.begin(), loop, it1, it2);
             secondLoop.erase(it1);
             loop.erase(it2);
             front.push_back(secondLoop);
-            assert(!contains(edge1) && !contains(edge2));
-            assert(integrity());
+            ASSERT(!contains(edge1) && !contains(edge2));
+            ASSERT(integrity());
             return;
         }
         if (it1 != loop.end()) {
@@ -107,14 +106,14 @@ void Front::glue(Edge edge1, Edge edge2) {
     loop1Iterator->erase(edge1Iterator);
     loop1Iterator->erase(edge2Iterator);
     front.erase(loop2Iterator);
-    assert(!contains(edge1) && !contains(edge2));
-    assert(integrity());
+    ASSERT(!contains(edge1) && !contains(edge2));
+    ASSERT(integrity());
 }
 
 void Front::insertSeedTriangle(Edge edge1, Edge edge2, Edge edge3, Vertex ballPosition) {
-    assert(edge1.j == edge2.i);
-    assert(edge2.j == edge3.i);
-    assert(edge3.j == edge1.i);
+    ASSERT(edge1.j == edge2.i);
+    ASSERT(edge2.j == edge3.i);
+    ASSERT(edge3.j == edge1.i);
     Loop loop = { edge1, edge2, edge3 };
     front.push_back(loop);
     ballPositions[toString(edge1)] = ballPosition;
@@ -123,7 +122,7 @@ void Front::insertSeedTriangle(Edge edge1, Edge edge2, Edge edge3, Vertex ballPo
     correspondingTriangle[toString(edge1)] = edge2.j;
     correspondingTriangle[toString(edge2)] = edge3.j;
     correspondingTriangle[toString(edge3)] = edge1.j;
-    assert(integrity());
+    ASSERT(integrity());
 }
 
 bool Front::contains(VertexIndex vertexIndex) {
@@ -154,12 +153,12 @@ bool Front::boundaryContains(Edge edge) {
 }
 
 void Front::markAsBoundary(Edge edge) {
-    assert(!boundaryContains(edge));
+    ASSERT(!boundaryContains(edge));
     boundary.push_back(edge);
 }
 
 bool Front::areConsecutive(Loop &loop, Loop::iterator it1, Loop::iterator it2) {
-    assert(loop.size() >= 2);
+    ASSERT(loop.size() >= 2);
     if (it1 == std::prev(loop.end())) {
         return it2 == std::prev(it1) || it2 == loop.begin();
     }
@@ -176,7 +175,7 @@ bool Front::loopIntegrity(Loop &loop) {
     return true;
 }
 
-// checks for loop order and double edges
+// checks for loop order and float edges
 bool Front::integrity() {
     for (Loop &loop : front) {
         if (!loopIntegrity(loop)) {
@@ -191,7 +190,7 @@ bool Front::integrity() {
                 if (*it != loop) {
                     for (Edge &e : *it) {
                         if (edge == e) {
-                            DBOUT << "front contains double edge" << std::endl;
+                            DBOUT << "front contains float edge" << std::endl;
                             return false;
                         }
                     }

@@ -6,6 +6,6 @@
 #include <string>
 
 namespace IO {
-    Vertices readVertices(std::string path);
-    void writeMesh(std::string path, Vertices &vertices, std::list<Triangle> &faces);
+    Points readCloud(std::string path);
+    void writeMesh(std::string path, Points &points, std::list<Triangle> &faces);
 }

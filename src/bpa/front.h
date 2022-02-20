@@ -1,3 +1,5 @@
+#pragma once
+
 #include "primitives.h"
 
 #include <list>
@@ -7,7 +9,6 @@
 
 class Front {
     private:
-        const Vertices &vertices;
         std::list<Loop> front;
         std::list<Edge> boundary;
         std::map<std::string, Vertex> ballPositions;
@@ -17,7 +18,7 @@ class Front {
         bool loopIntegrity(Loop &loop);
         bool integrity();
     public:
-        Front(const Vertices &verticies);
+        Front() = default;
         // returns the active edge, the ball position and the corresponding vertex to form a triangle (to prevent self-rolling)
         std::optional<std::tuple<Edge, Vertex, VertexIndex>> getActiveEdge();
         void join(Edge edge, VertexIndex vertexIndex, Vertex ballPosition);

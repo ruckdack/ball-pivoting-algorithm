@@ -12,21 +12,22 @@
 #include <map>
 
 #define _USE_MATH_DEFINES
-#define ASSERTM(eq, msg) assert(((void)msg, eq))
-#define ASSERT(eq) assert(eq)
 
-BPA::BPA(const Vertices &v, const double ballRad)
-: vertices(v)
+BPA::BPA(const Points &p, const double ballRad)
+: vertices(p.vertices)
+, normals(p.normals)
 , ballRadius(ballRad)
 , query(vertices, 2*ballRadius)
-, front(vertices)
-, done(false) {}
+, done(false) {
+    ASSERT(p.size == vertices.size());
+    ASSERT(p.size == normals.size());
+}
 
 bool BPA::used(VertexIndex vertexIndex) {
     return usedVertices.end() != std::find(usedVertices.begin(), usedVertices.end(), vertexIndex);
 }
 
-void BPA::printIndexFace(Triangle triangle) {
+void BPA::printFaceIndicees(Triangle triangle) {
     DBOUT << "(" << triangle.i << "," << triangle.j << "," << triangle.k << ")"<< std::endl;
 }
 
@@ -40,7 +41,7 @@ void BPA::step() {
             auto [seedTriangle, newBallPosition] = optionalSeedTriangle.value();
             faces.push_back(seedTriangle);
             DBOUT << "inital triangle: " << std::endl; 
-            printIndexFace(seedTriangle);
+            printFaceIndicees(seedTriangle);
             VertexIndex i = seedTriangle.i;
             VertexIndex j = seedTriangle.j;
             VertexIndex k = seedTriangle.k;
@@ -67,7 +68,7 @@ void BPA::step() {
                     usedVertices.push_back(vertexIndex);
                     front.join(edge, vertexIndex, newBallPosition);
                     DBOUT << "new triangle: " << std::endl;
-                    printIndexFace(newFace);
+                    printFaceIndicees(newFace);
                     ASSERT(!front.contains(edge));
                     if (front.contains({vertexIndex, edge.i})) {
                         front.glue({edge.i, vertexIndex}, {vertexIndex, edge.i});

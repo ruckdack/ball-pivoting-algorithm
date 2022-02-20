@@ -3,10 +3,12 @@
 #include <regex>
 #include <cstdarg>
 #include <cmath>
+#include <iostream>
 
 #define EPS 1.0e-12
 
 std::vector<std::string> split(const std::string str, const char delimiter) {
+    // TODO back references
     std::vector<size_t> locations = findChar(str, delimiter);
     if (locations.front() != 0)
         locations.insert(locations.begin(), -1);
@@ -16,8 +18,11 @@ std::vector<std::string> split(const std::string str, const char delimiter) {
     for (size_t i = 0; i < locations.size() - 1; i++) {
         size_t from = locations[i] + 1;
         size_t len = locations[i+1] - locations[i] - 1;
-        if (!len) break;
-        splitted.push_back(str.substr(from, len));
+        if (!len) {
+            splitted.push_back(std::string());
+        } else {
+            splitted.push_back(str.substr(from, len));
+        }
     }
     return splitted;
 }
@@ -28,12 +33,12 @@ std::vector<size_t> findChar(const std::string str, const char c) {
         if (str[i] == c)
             locations.push_back(i);
     }
-    return locations;
+    return locations;   
 }
 
 bool pathSyntaxValid(std::string path) {
-    std::regex re(R"(((\.{1,2}|([A-Za-z_0-9]|\-|\+)+)\/)*([A-Za-z_0-9]|\-|\+)+\.obj)");
-    return std::regex_match(path, re);
+    std::regex reg(R"(((\.{1,2}|([A-Za-z_0-9]|\-|\+)+)\/)*([A-Za-z_0-9]|\-|\+)+\.obj)");
+    return std::regex_match(path, reg);
 }
 
 bool equals(double d1, double d2) {

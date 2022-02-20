@@ -2,13 +2,13 @@
 #include "bpa/bpa.h"
 #include "helpers/helpers.h"
 #include "io/io.h"
+#include "trace.h"
 
 #include <iostream>
 #include <string>
 #include <cmath>
 #include <chrono>
 
-#include "trace.h"
 
 
 int main(int argc, char *argv[]) {
@@ -28,11 +28,11 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     try {
-        Vertices vertices = IO::readVertices(inputPath);
-        INFOUT << "Read " << vertices.size() << " vertices." << std::endl;
+        Points points = IO::readCloud(inputPath);
+        INFOUT << "Read " << points.size << " vertices." << std::endl;
         INFOUT << "Running computations..." << std::endl;
         auto start = std::chrono::steady_clock::now();
-        BPA bpa(vertices, ballRadius);
+        BPA bpa(points, ballRadius);
         size_t counter = 1;
         while (!bpa.isDone()) {
             bpa.step();
@@ -41,7 +41,7 @@ int main(int argc, char *argv[]) {
             if (false) {
                 std::list<Triangle> faces = bpa.getFaces();
                 std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
-                IO::writeMesh(path, vertices, faces);
+                IO::writeMesh(path, points, faces);
             }
             counter++;
             DBOUT << "count: " << counter << std::endl;
@@ -52,11 +52,11 @@ int main(int argc, char *argv[]) {
         std::chrono::duration<float> elapsed_seconds = end-start;
         INFOUT << "Reconstructed " << faces.size() << (faces.size() == 1 ? " triangle " : " triangles") << " in " << std::round(elapsed_seconds.count()) << " seconds." << std::endl;
         INFOUT << "Used " << bpa.numOfUsedVertices() << (bpa.numOfUsedVertices() == 1 ? " vertex (" : " vertices (")
-               << roundToDigits(bpa.numOfUsedVertices() / static_cast<float>(vertices.size()), 2) << "% of total vertices amount)." << std::endl;
+               << roundToDigits(bpa.numOfUsedVertices() / static_cast<float>(points.size), 2) << "% of total vertices amount)." << std::endl;
         if (bpa.boundaryWasFound()) {
             INFOUT << "A boundary was found." << std::endl;
         }
-        IO::writeMesh(outputPath, vertices, faces);
+        IO::writeMesh(outputPath, points, faces);
         return 0;
     } catch (const std::runtime_error& error) {
         ERROUT << error.what() << std::endl;

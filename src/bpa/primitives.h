@@ -9,16 +9,16 @@ struct Vertex {
     double y;
     double z;
 };
-
 typedef size_t VertexIndex;
+typedef std::vector<Vertex> Vertices;
 
-// indexes a vertex vector
+// indexes a point vector
 struct Edge {
     VertexIndex i;
     VertexIndex j;
 };
 
-// indexes a vertex vector
+// indexes a point vector
 struct Triangle {
     VertexIndex i;
     VertexIndex j;
@@ -29,6 +29,18 @@ struct Vector {
     double x;
     double y;
     double z;
+};
+typedef std::vector<Vector> Vectors;
+
+struct PointIndex {
+    VertexIndex vertexIndex;
+    VertexIndex normalIndex;
+};
+
+struct Points {
+    Vertices vertices;
+    Vectors normals;
+    size_t size;
 };
 
 struct Circle {
@@ -42,7 +54,6 @@ struct Sphere {
     double radius;
 };
 
-typedef std::vector<Vertex> Vertices;
 typedef std::list<Edge> Loop;
 
 std::string toString(const Edge edge);
