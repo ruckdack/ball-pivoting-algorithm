@@ -8,7 +8,6 @@
 #define EPS 1.0e-12
 
 std::vector<std::string> split(const std::string str, const char delimiter) {
-    // TODO back references
     std::vector<size_t> locations = findChar(str, delimiter);
     if (locations.front() != 0)
         locations.insert(locations.begin(), -1);

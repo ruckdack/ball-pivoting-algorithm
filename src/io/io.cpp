@@ -40,7 +40,7 @@ Points IO::readCloud(std::string path) {
     Vectors alignedNormals;
     for (PointIndex pointIndex : pointIndicees) {
         // check indicees
-        if (pointIndex.vertexIndex < 0 || pointIndex.vertexIndex >= normals.size())
+        if (pointIndex.vertexIndex < 0 || pointIndex.vertexIndex >= vertices.size())
             throw std::runtime_error("Wrong indexing.");
         if (pointIndex.normalIndex < 0 || pointIndex.normalIndex >= normals.size())
             throw std::runtime_error("Wrong indexing.");

@@ -7,12 +7,16 @@
 #include <cassert>
 #include <iostream>
 
-std::optional<std::tuple<Edge, Vertex, VertexIndex>> Front::getActiveEdge() {
+std::optional<Front::ActiveEdge> Front::getActiveEdge() {
     ASSERT(integrity());
     for (Loop loop : front) {
         for (Edge edge : loop) {
             if (!boundaryContains(edge)) {
-                return std::make_tuple(edge, ballPositions[toString(edge)], correspondingTriangle[toString(edge)]);
+                ActiveEdge activeEdge = {};
+                activeEdge.edge = edge;
+                activeEdge.ballPosition = ballPositions[toString(edge)];
+                activeEdge.correspondingVertex = correspondingTriangle[toString(edge)];
+                return activeEdge;
             }
         }
     }

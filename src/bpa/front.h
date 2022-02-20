@@ -8,6 +8,11 @@
 #include <map>
 
 class Front {
+    struct ActiveEdge {
+        Edge edge;
+        Vertex ballPosition;
+        VertexIndex correspondingVertex;
+    };
     private:
         std::list<Loop> front;
         std::list<Edge> boundary;
@@ -19,8 +24,7 @@ class Front {
         bool integrity();
     public:
         Front() = default;
-        // returns the active edge, the ball position and the corresponding vertex to form a triangle (to prevent self-rolling)
-        std::optional<std::tuple<Edge, Vertex, VertexIndex>> getActiveEdge();
+        std::optional<ActiveEdge> getActiveEdge();
         void join(Edge edge, VertexIndex vertexIndex, Vertex ballPosition);
         void glue(Edge edge1, Edge edge2);
         void insertSeedTriangle(Edge edge1, Edge edge2, Edge edge3, Vertex ballPosition);

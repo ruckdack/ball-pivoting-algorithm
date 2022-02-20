@@ -9,6 +9,14 @@
 #include <tuple>
 
 class BPA {
+    struct SeedTriangle {
+        Triangle triangle;
+        Vertex ballPosition;
+    };
+    struct PivotResult {
+        VertexIndex foundVertex;
+        Vertex ballPosition;
+    };
     private:
         const Vertices vertices;
         const Vectors normals;
@@ -21,10 +29,10 @@ class BPA {
         std::list<VertexIndex> usedVertices;
         bool used(VertexIndex vertexIndex);
         void printFaceIndicees(Triangle triangle);
-        std::optional<std::tuple<Triangle, Vertex>> findSeedTriangle();
-        std::optional<std::tuple<VertexIndex, Vertex>> ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspondingVertexIndex);
+        std::optional<SeedTriangle> findSeedTriangle();
+        std::optional<PivotResult> ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspondingVertexIndex);
         double calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspondingVertex, const Vertex ballPosition);
-        std::vector<Vertex> intersectCircleSphere(const Vertex circleCenter, const double circleRadius, const Vector circleNormal, const Vertex sphereCenter, const double sphereRadius);
+        std::vector<Vertex> intersectCircleSphere(const Circle circle, const Sphere sphere);
         std::optional<Circle> intersectSphereSphere(const Sphere sphere1, const Sphere sphere2);
         std::optional<Vertex> calcMinAlongXAxis(const Circle circle);
     public:
