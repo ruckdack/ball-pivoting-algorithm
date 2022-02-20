@@ -2,7 +2,6 @@
 
 #include "../helpers/helpers.h"
 #include "../io/io.h"
-#include "../trace.h"
 
 #include <cassert>
 #include <optional>
@@ -23,16 +22,29 @@ BPA::BPA(const Points &p, const double ballRad)
     ASSERT(p.size == normals.size());
 }
 
-bool BPA::used(VertexIndex vertexIndex) {
-    return usedVertices.end() != std::find(usedVertices.begin(), usedVertices.end(), vertexIndex);
-}
-
-void BPA::printFaceIndicees(Triangle triangle) {
-    DBOUT << "(" << triangle.i << "," << triangle.j << "," << triangle.k << ")"<< std::endl;
-}
-
-bool BPA::isDone() {
-    return done;
+BPA::Result BPA::run() {
+    size_t counter = 1;
+    while (!done) {
+        step();
+        // only for debugging
+        #ifdef DEBUG
+        if (false) {
+            std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
+            Points points = {};
+            points.vertices = vertices;
+            points.normals = normals;
+            points.size = vertices.size();
+            IO::writeMesh(path, points, faces);
+        }
+        counter++;
+        DBOUT << "count: " << counter << std::endl;
+        #endif
+    }
+    Result result;
+    result.triangles = faces;
+    result.boundaryExists = front.nonemptyBoundary();
+    result.numOfUsedVertices = usedVertices.size();
+    return result;
 }
 
 void BPA::step() {
@@ -88,18 +100,6 @@ void BPA::step() {
             done = true;
         }
     }
-}
-
-bool BPA::boundaryWasFound() {
-    return front.nonemptyBoundary();
-}
-
-size_t BPA::numOfUsedVertices() {
-    return usedVertices.size();
-}
-
-std::list<Triangle> BPA::getFaces() {
-    return faces;
 }
 
 std::optional<BPA::SeedTriangle> BPA::findSeedTriangle() {
@@ -165,12 +165,6 @@ std::optional<BPA::SeedTriangle> BPA::findSeedTriangle() {
 
 std::optional<BPA::PivotResult> BPA::ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspondingVertex) {
 
-    std::optional<VertexIndex> skipVertex = std::nullopt;
-    // if (correspondingVertex && ignoreForEdges.find(toString(edge) + "@" + std::to_string(correspondingVertex.value())) != ignoreForEdges.end()) {
-    //     skipVertex = ignoreForEdges[toString(edge) + "@" + std::to_string(correspondingVertex.value())];
-    //     DBOUT << "skipping: " << skipVertex.value() << std::endl;
-    // }
-
     std::vector<VertexIndex> neighbours = query.getNeighbourhood(edge);
     Vertex e_i = vertices[edge.i];
     Vertex e_j = vertices[edge.j];
@@ -203,7 +197,7 @@ std::optional<BPA::PivotResult> BPA::ballPivot(const Edge edge, const Vertex bal
     circle.radius = r_c;
     circle.normal = setMag(e_i_to_e_j, 1.0);
     for (VertexIndex neighbour : neighbours) {
-        if (correspondingVertex && correspondingVertex.value() == neighbour || skipVertex && skipVertex.value() == neighbour) {
+        if (correspondingVertex && correspondingVertex.value() == neighbour) {
             continue;
         }
         Sphere sphere = {};
@@ -238,23 +232,6 @@ std::optional<BPA::PivotResult> BPA::ballPivot(const Edge edge, const Vertex bal
     }
     if (alternativeVertexIndex) {
         ASSERT(false);
-        // // DBOUT << "ball touched at least two vertices at the same time" << std::endl;
-        // // return std::nullopt;
-        // DBOUT << "rolled onto multiple points" << std::endl;
-        // Vector e_i_to_new = conn(e_i, vertices[newVertexIndex]);
-        // Vector e_i_to_alt = conn(e_i, vertices[alternativeVertexIndex.value()]);
-        // if (e_i_to_new*e_i_to_new > e_i_to_alt*e_i_to_alt) {
-        //     DBOUT << "swapping" << std::endl;
-        //     auto tmp = newVertexIndex;
-        //     newVertexIndex = alternativeVertexIndex.value();
-        //     alternativeVertexIndex = tmp;
-        // }
-        // Edge iNew = {edge.i, newVertexIndex};
-        // ignoreForEdges.insert(std::make_pair(toString(iNew) + "@" + std::to_string(edge.j), alternativeVertexIndex.value()));
-        // Edge newAlt = {newVertexIndex, alternativeVertexIndex.value()};
-        // ignoreForEdges.insert(std::make_pair(toString(newAlt) + "@" + std::to_string(edge.j), edge.i));
-        // Edge altJ = {alternativeVertexIndex.value(), edge.j};
-        // ignoreForEdges.insert(std::make_pair(toString(altJ) + "@" + std::to_string(newVertexIndex), edge.i));
     }
     #ifdef DEBUG // these are only assertions
         DBOUT << "found: " << newVertexIndex << std::endl;
@@ -265,7 +242,7 @@ std::optional<BPA::PivotResult> BPA::ballPivot(const Edge edge, const Vertex bal
         ASSERTM(equals(len(conn(e_j, newBallPosition)), r_b), "new ball is not ball radius away from edgepoint j");
         ASSERTM(equals(len(conn(newBallPosition, vertices[newVertexIndex])), r_b), "new ball is not ball radius away from new vertex");
         for (VertexIndex neighbour : neighbours) {
-            if (newVertexIndex == neighbour || alternativeVertexIndex && alternativeVertexIndex.value() == neighbour || skipVertex && skipVertex.value() == neighbour) continue;
+            if (newVertexIndex == neighbour || alternativeVertexIndex && alternativeVertexIndex.value() == neighbour) continue;
             if (equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.0)) {
                 Sphere sphere = {};
                 sphere.center = vertices[neighbour];
@@ -404,3 +381,13 @@ std::optional<Vertex> BPA::calcMinAlongXAxis(const Circle circle) {
     ASSERTM(equals(len(conn(intersection, circle.center)), circle.radius), "found intersection is not circle.radius away from circle.center => not on circle");
     return intersection;
 }
+
+bool BPA::used(VertexIndex vertexIndex) {
+    return usedVertices.end() != std::find(usedVertices.begin(), usedVertices.end(), vertexIndex);
+}
+
+#ifdef DEBUG
+void BPA::printFaceIndicees(Triangle triangle) {
+    DBOUT << "(" << triangle.i << "," << triangle.j << "," << triangle.k << ")"<< std::endl;
+}
+#endif

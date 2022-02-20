@@ -33,31 +33,16 @@ int main(int argc, char *argv[]) {
         INFOUT << "Running computations..." << std::endl;
         auto start = std::chrono::steady_clock::now();
         BPA bpa(points, ballRadius);
-        size_t counter = 1;
-        while (!bpa.isDone()) {
-            bpa.step();
-            // only for debugging
-            #ifdef DEBUG
-            if (false) {
-                std::list<Triangle> faces = bpa.getFaces();
-                std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
-                IO::writeMesh(path, points, faces);
-            }
-            counter++;
-            DBOUT << "count: " << counter << std::endl;
-            #endif
-        }
-        std::list<Triangle> faces = bpa.getFaces();
+        BPA::Result result = bpa.run();
         auto end = std::chrono::steady_clock::now();
         std::chrono::duration<float> elapsed_seconds = end-start;
-        INFOUT << "Reconstructed " << faces.size() << (faces.size() == 1 ? " triangle " : " triangles") << " in " << std::round(elapsed_seconds.count()) << " seconds." << std::endl;
-        INFOUT << "Used " << bpa.numOfUsedVertices() << (bpa.numOfUsedVertices() == 1 ? " vertex (" : " vertices (")
-               << roundToDigits(bpa.numOfUsedVertices() / static_cast<float>(points.size), 2) << "% of total vertices amount)." << std::endl;
-        if (bpa.boundaryWasFound()) {
+        INFOUT << "Reconstructed " << result.triangles.size() << (result.triangles.size() == 1 ? " triangle " : " triangles") << " in " << std::round(elapsed_seconds.count()) << " seconds." << std::endl;
+        INFOUT << "Used " << result.numOfUsedVertices << (result.numOfUsedVertices == 1 ? " vertex (" : " vertices (")
+               << roundToDigits(result.numOfUsedVertices / static_cast<float>(points.size), 2) << "% of total vertices amount)." << std::endl;
+        if (result.boundaryExists) {
             INFOUT << "A boundary was found." << std::endl;
         }
-        IO::writeMesh(outputPath, points, faces);
-        return 0;
+        IO::writeMesh(outputPath, points, result.triangles);
     } catch (const std::runtime_error& error) {
         ERROUT << error.what() << std::endl;
         return -1;
