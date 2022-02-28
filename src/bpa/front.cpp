@@ -15,7 +15,12 @@ std::optional<Front::ActiveEdge> Front::getActiveEdge() {
                 ActiveEdge activeEdge = {};
                 activeEdge.edge = edge;
                 activeEdge.ballPosition = ballPositions[toString(edge)];
-                activeEdge.correspondingVertex = correspondingTriangle[toString(edge)];
+                activeEdge.correspVertexIndex = correspVertexIndexMap[toString(edge)];
+                if (additionalCorrespVertexIndiceesMap.find(toString(edge)) != additionalCorrespVertexIndiceesMap.end()) {
+                    activeEdge.additionalCorrespVertexIndicees = additionalCorrespVertexIndiceesMap[toString(edge)];
+                } else {
+                    activeEdge.additionalCorrespVertexIndicees = std::vector<VertexIndex>();
+                }
                 return activeEdge;
             }
         }
@@ -24,20 +29,33 @@ std::optional<Front::ActiveEdge> Front::getActiveEdge() {
     return std::nullopt;
 }
 
-// some ballPosition and correspondingTriangle entries could be deleted here
-void Front::join(Edge edge, VertexIndex vertexIndex, Vertex ballPosition) {
+// void insertCorrespondingVertex(Edge edge, VertexIndex vertexIndex) {
+//     std::string key = toString(edge);
+//     if (correspondingVertices.find(key) == correspondingVertices.end()) {
+//         correspondingVertices[key] = std::vector<VertexIndex>{vertexIndex};
+//     } else {
+//         correspondingVertices[key].push_back(vertexIndex);
+//     }
+// }
+
+// some ballPosition and correspondingVertices entries could be deleted here
+void Front::join(const Edge edge, const VertexIndex vertexIndex, const Vertex ballPosition, const std::vector<VertexIndex> additionalCorrespVertexIndicees) {
     ASSERT(integrity());
     for (Loop &loop : front) {
         auto edgeIter = std::find(loop.begin(), loop.end(), edge);
         if (edgeIter != loop.end()) {
             Edge edge1 = {edge.i, vertexIndex};
-            loop.insert(edgeIter, edge1);
-            ballPositions[toString(edge1)] = ballPosition;
-            correspondingTriangle[toString(edge1)] = edge.j;
             Edge edge2 = {vertexIndex, edge.j};
+            loop.insert(edgeIter, edge1);
             loop.insert(edgeIter, edge2);
+            ballPositions[toString(edge1)] = ballPosition;
             ballPositions[toString(edge2)] = ballPosition;
-            correspondingTriangle[toString(edge2)] = edge.i;
+            correspVertexIndexMap[toString(edge1)] = edge.j;
+            correspVertexIndexMap[toString(edge2)] = edge.i;
+            if (additionalCorrespVertexIndicees.size() > 0) {
+                additionalCorrespVertexIndiceesMap[toString(edge1)] = additionalCorrespVertexIndicees;
+                additionalCorrespVertexIndiceesMap[toString(edge2)] = additionalCorrespVertexIndicees;
+            }
             loop.erase(edgeIter);
             ASSERT(integrity());
             ASSERT(!contains(edge));
@@ -123,9 +141,9 @@ void Front::insertSeedTriangle(Edge edge1, Edge edge2, Edge edge3, Vertex ballPo
     ballPositions[toString(edge1)] = ballPosition;
     ballPositions[toString(edge2)] = ballPosition;
     ballPositions[toString(edge3)] = ballPosition;
-    correspondingTriangle[toString(edge1)] = edge2.j;
-    correspondingTriangle[toString(edge2)] = edge3.j;
-    correspondingTriangle[toString(edge3)] = edge1.j;
+    correspVertexIndexMap[toString(edge1)] = edge2.j;
+    correspVertexIndexMap[toString(edge2)] = edge3.j;
+    correspVertexIndexMap[toString(edge3)] = edge1.j;
     ASSERT(integrity());
 }
 
@@ -179,7 +197,7 @@ bool Front::loopIntegrity(Loop &loop) {
     return true;
 }
 
-// checks for loop order and float edges
+// checks for loop order and double edges
 bool Front::integrity() {
     for (Loop &loop : front) {
         if (!loopIntegrity(loop)) {
@@ -194,7 +212,7 @@ bool Front::integrity() {
                 if (*it != loop) {
                     for (Edge &e : *it) {
                         if (edge == e) {
-                            DBOUT << "front contains float edge" << std::endl;
+                            DBOUT << "front contains double edge" << std::endl;
                             return false;
                         }
                     }
