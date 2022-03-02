@@ -28,7 +28,7 @@ BPA::Result BPA::run() {
         step();
         // only for debugging
         #ifdef DEBUG
-        if (true) {
+        if (counter > 4890) {
             std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
             Points points = {};
             points.vertices = vertices;
@@ -236,9 +236,6 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         sphere.center = vertices[neighbour];
         sphere.radius = r_b;
         std::vector<Vertex> intersections = intersectCircleSphere(circle, sphere);
-        if (neighbour == 162 && edge.i == 160 && edge.j == 161) {
-            DBOUT << "test" << std::endl;
-        }
         for (Vertex i : intersections) {
             ASSERTM(equals(len(conn(e_i, i)), r_b), "intersection is not ball radius away from edgepoint i");
             ASSERTM(equals(len(conn(e_j, i)), r_b), "intersection is not ball radius away from edgepoint j");
@@ -247,16 +244,7 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
             ASSERTM(equals(len(m_to_i), r_c), "intersection is not circle radius away from edge midpoint");
             double p = m_to_b * m_to_i;
             if (n * m_to_i < 0.0) {
-                if (p > r_c_sq - 0.000001) {
-                    // ball can be rotated backwards by a small epsilon
-                    p = 2 - p;
-                } else {
-                    // in this case ball is rotated more than 180°, we use the "extended" scalar product
-                    p = -p - 2*r_c_sq;
-                }
-            }
-            if (same(i, newBallPosition)) {
-                alternativeVertexIndex = neighbour;
+                p = -p - 2*r_c_sq;
             }
             if (p > maxDotProduct) {
                 maxDotProduct = p;
@@ -264,6 +252,8 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
                 newBallPosition = i;
                 foundNeighbour = true;
                 alternativeVertexIndex = std::nullopt;
+            } else if (equals(i, newBallPosition)) {
+                alternativeVertexIndex = neighbour;
             }
         }
     }
@@ -272,9 +262,6 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         PivotResult pivotResult = {};
         pivotResult.vertices = std::vector<VertexIndex>();
         return pivotResult;
-    }
-    if (alternativeVertexIndex) {
-        // ASSERT(false);
     }
     #ifdef DEBUG // these are only assertions
         DBOUT << "found: " << newVertexIndex << std::endl;
@@ -305,7 +292,7 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
                 DBOUT << "[assertion fail] in coords: (" << vertices[neighbour].x << "," << vertices[neighbour].y << "," << vertices[neighbour].z << ")" << std::endl;
                 DBOUT << "[assertion fail] " << neighbour << " has distance " << len(conn(newBallPosition, vertices[neighbour])) << " to ball center" << std::endl;
             }
-            // ASSERTM(len(conn(newBallPosition, vertices[neighbour])) >= ballRadius, "vertices lay inside the ball");
+            ASSERTM(len(conn(newBallPosition, vertices[neighbour])) >= ballRadius, "vertices lay inside the ball");
         }
     #endif
     PivotResult pivotResult = {};

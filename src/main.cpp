@@ -36,7 +36,10 @@ int main(int argc, char *argv[]) {
         BPA::Result result = bpa.run();
         auto end = std::chrono::steady_clock::now();
         std::chrono::duration<float> elapsed_seconds = end-start;
-        INFOUT << "Reconstructed " << result.triangles.size() << (result.triangles.size() == 1 ? " triangle " : " triangles") << " in " << std::round(elapsed_seconds.count()) << " seconds." << std::endl;
+        INFOUT << "Reconstructed "
+        << result.triangles.size() << (result.triangles.size() == 1 ? " triangle " : " triangles")
+        << " in " << std::round(elapsed_seconds.count()) 
+        << (std::round(elapsed_seconds.count()) == 1 ? " second." : " seconds.") << std::endl;
         INFOUT << "Used " << result.numOfUsedVertices << (result.numOfUsedVertices == 1 ? " vertex (" : " vertices (")
                << roundToDigits(result.numOfUsedVertices / static_cast<float>(points.size), 2) << "% of total vertices amount)." << std::endl;
         if (result.boundaryExists) {
