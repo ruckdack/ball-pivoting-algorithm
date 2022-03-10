@@ -28,7 +28,7 @@ BPA::Result BPA::run() {
         step();
         // only for debugging
         #ifdef DEBUG
-        if (counter > 4890) {
+        if (false) {
             std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
             Points points = {};
             points.vertices = vertices;
@@ -62,43 +62,46 @@ void BPA::insertSeedTriangle(BPA::PivotResultStep pivotResultStep) {
     front.insertSeedTriangle({i, j}, {j, k}, {k, i}, newBallPosition);
 }
 
-bool BPA::insertPivotResultStep(BPA::PivotResultStep pivotResultStep) {
+void BPA::insertPivotResultStep(BPA::PivotResultStep pivotResultStep) {
     Edge edge = pivotResultStep.edge;
     VertexIndex vertexIndex = pivotResultStep.vertex;
     Vertex newBallPosition = pivotResultStep.ballPosition;
     std::vector<VertexIndex> additionalCorrespVertexIndicees = pivotResultStep.additionalCorrespVertexIndicees;
-    if (!used(vertexIndex) || front.contains(vertexIndex)) {
-        Triangle newFace = {edge.i, vertexIndex, edge.j};
-        for (Triangle face : faces) {
-            ASSERTM(face != newFace, "cannot add already reconstructed face again");
-        }
-        faces.push_back(newFace);
-        usedVertices.push_back(vertexIndex);
-        front.join(edge, vertexIndex, newBallPosition, additionalCorrespVertexIndicees);
-        DBOUT << "new triangle: " << std::endl;
-        printFaceIndicees(newFace);
-        ASSERT(!front.contains(edge));
-        if (front.contains({vertexIndex, edge.i})) {
-            front.glue({edge.i, vertexIndex}, {vertexIndex, edge.i});
-        }
-        if (front.contains({edge.j, vertexIndex})) {
-            front.glue({vertexIndex, edge.j}, {edge.j, vertexIndex});
-        }
-        return true;
+    ASSERT(!used(vertexIndex) || front.contains(vertexIndex));
+    Triangle newFace = {edge.i, vertexIndex, edge.j};
+    for (Triangle face : faces) {
+        ASSERTM(face != newFace, "cannot add already reconstructed face again");
     }
-    return false;
+    faces.push_back(newFace);
+    usedVertices.push_back(vertexIndex);
+    front.join(edge, vertexIndex, newBallPosition, additionalCorrespVertexIndicees);
+    DBOUT << "new triangle: " << std::endl;
+    printFaceIndicees(newFace);
+    ASSERT(!front.contains(edge));
+    if (front.contains({vertexIndex, edge.i})) {
+        front.glue({edge.i, vertexIndex}, {vertexIndex, edge.i});
+    }
+    if (front.contains({edge.j, vertexIndex})) {
+        front.glue({vertexIndex, edge.j}, {edge.j, vertexIndex});
+    }
 }
 
 void BPA::step() {
     std::optional<Edge> boundaryEdge;
     if (faces.size() == 0) {
         if (PivotResult pivotResult = findSeedTriangle(); pivotResult.vertices.size() != 0) {
+            // filter for only on boundary or not used
+            std::vector<VertexIndex> filteredVertices;
+            for (VertexIndex vertexIndex : pivotResult.vertices) {
+                if (!used(vertexIndex) || front.contains(vertexIndex)) {
+                    filteredVertices.push_back(vertexIndex);
+                }
+            }
+            pivotResult.vertices = filteredVertices;
             std::vector<PivotResultStep> serialized = serializePivotResult(pivotResult);
             insertSeedTriangle(serialized[0]);
             for (size_t i = 1; i < serialized.size(); i++) {
-                if (!insertPivotResultStep(serialized[i])) {
-                    boundaryEdge = serialized[i].edge;
-                }
+                insertPivotResultStep(serialized[i]);
             }
         } else {
             done = true;
@@ -112,14 +115,20 @@ void BPA::step() {
             std::vector<VertexIndex> additionalCorrespVertexIndicees = optionalActiveEdge.value().additionalCorrespVertexIndicees;
             // TODO corresponding Vertices verarzten
             PivotResult pivotResult = ballPivot(edge, ballPosition, correspVertexIndex, additionalCorrespVertexIndicees);
+            // filter for only on boundary or not used
+            std::vector<VertexIndex> filteredVertices;
+            for (VertexIndex vertexIndex : pivotResult.vertices) {
+                if (!used(vertexIndex) || front.contains(vertexIndex)) {
+                    filteredVertices.push_back(vertexIndex);
+                }
+            }
+            pivotResult.vertices = filteredVertices;
             if (pivotResult.vertices.size() == 0) {
                 boundaryEdge = edge;
             } else {
                 std::vector<PivotResultStep> serialized = serializePivotResult(pivotResult);
                 for (PivotResultStep &s : serialized) {
-                    if (!insertPivotResultStep(s)) {
-                        boundaryEdge = s.edge;
-                    }
+                    insertPivotResultStep(s);
                 }
             }
         } else {
@@ -214,9 +223,7 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
     ASSERTM(equals(len(conn(e_j, b)), r_b), "ball is placed incorrectly");
     Vector n = setMag(cross(e_i_to_e_j, m_to_b), 1.0);
     ASSERTM(equals(n*m_to_b, 0.0), "normal is not perpendicular to plane(e_i, e_j, b)");
-    VertexIndex newVertexIndex;
-    std::optional<VertexIndex> alternativeVertexIndex = std::nullopt;
-    bool foundNeighbour = false;
+    std::vector<VertexIndex> newVertexIndicees;
     double maxDotProduct = correspVertexIndex.has_value() ? calcStartingScalarProduct(e_i, e_j, vertices[correspVertexIndex.value()], b) : -1.0;
     maxDotProduct *= r_c_sq;
     DBOUT << "starting dot product: " << maxDotProduct << ", lays in [-3R², R²]: [" << -3*r_c_sq << ", " << r_c_sq << "]" << std::endl;
@@ -246,45 +253,44 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
             if (n * m_to_i < 0.0) {
                 p = -p - 2*r_c_sq;
             }
-            if (p > maxDotProduct) {
+            if (equals(i, newBallPosition)) {
+                newVertexIndicees.push_back(neighbour);
+            } else if (p > maxDotProduct) {
                 maxDotProduct = p;
-                newVertexIndex = neighbour;
+                newVertexIndicees = {neighbour};
                 newBallPosition = i;
-                foundNeighbour = true;
-                alternativeVertexIndex = std::nullopt;
-            } else if (equals(i, newBallPosition)) {
-                alternativeVertexIndex = neighbour;
             }
         }
     }
-    if (!foundNeighbour) {
+    if (newVertexIndicees.size() == 0) {
         DBOUT << "ball touched no vertex, checked " << neighbours.size() << " neighbours" << std::endl;
         PivotResult pivotResult = {};
         pivotResult.vertices = std::vector<VertexIndex>();
         return pivotResult;
     }
     #ifdef DEBUG // these are only assertions
-        DBOUT << "found: " << newVertexIndex << std::endl;
-        DBOUT << "in coords: " << vertices[newVertexIndex].x << "," << vertices[newVertexIndex].y << "," << vertices[newVertexIndex].z << ")" << std::endl;
-        if (alternativeVertexIndex) DBOUT << "alt: " << alternativeVertexIndex.value() << std::endl;
+        DBOUT << "found " << newVertexIndicees.size() << " new vertices:" << std::endl;
+        for (VertexIndex newVertexIndex: newVertexIndicees) {
+            DBOUT << " - in coords: (" << vertices[newVertexIndex].x << "," << vertices[newVertexIndex].y << "," << vertices[newVertexIndex].z << ")" << std::endl;
+            ASSERTM(equals(len(conn(newBallPosition, vertices[newVertexIndex])), r_b), "new ball is not ball radius away from new vertex");
+        }
         DBOUT << "rotating ball to position: (" << newBallPosition.x << "," << newBallPosition.y << "," << newBallPosition.z << "), or " << maxDotProduct << " in dot product" << std::endl;
         ASSERTM(equals(len(conn(e_i, newBallPosition)), r_b), "new ball is not ball radius away from edgepoint i");
         ASSERTM(equals(len(conn(e_j, newBallPosition)), r_b), "new ball is not ball radius away from edgepoint j");
-        ASSERTM(equals(len(conn(newBallPosition, vertices[newVertexIndex])), r_b), "new ball is not ball radius away from new vertex");
         for (VertexIndex neighbour : neighbours) {
-            if (newVertexIndex == neighbour || alternativeVertexIndex && alternativeVertexIndex.value() == neighbour) continue;
+            if (std::find(newVertexIndicees.begin(), newVertexIndicees.end(), neighbour) != newVertexIndicees.end()) continue;
             if (equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.0)) {
                 Sphere sphere = {};
                 sphere.center = vertices[neighbour];
                 sphere.radius = r_b;
                 std::vector<Vertex> intersections = intersectCircleSphere(circle, sphere);
                 for (Vertex i : intersections) {
-                    if (same(newBallPosition, i)) {
+                    if (equals(newBallPosition, i)) {
                         DBOUT << "[assertion fail] found vertex " << neighbour << " on ball surface" << std::endl;
                         DBOUT << "[assertion fail] in coords: " << vertices[neighbour].x << "," << vertices[neighbour].y << "," << vertices[neighbour].z << ")" << std::endl;
                         DBOUT << "[assertion fail] intersection which equals new ball pos: (" << i.x << "," << i.y << "," << i.z << "), which is a dot product of: " << m_to_b*conn(m, i) << std::endl;
                     }
-                    ASSERTM(!same(newBallPosition, i), "vertices lay on the ball surface");
+                    ASSERTM(!equals(newBallPosition, i), "vertices lay on the ball surface");
                 }
             }
             if (len(conn(newBallPosition, vertices[neighbour])) < ballRadius) {
@@ -297,10 +303,7 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
     #endif
     PivotResult pivotResult = {};
     pivotResult.edge = edge;
-    pivotResult.vertices = {newVertexIndex};
-    if (alternativeVertexIndex) {
-        pivotResult.vertices.push_back(alternativeVertexIndex.value());
-    }
+    pivotResult.vertices = newVertexIndicees;
     pivotResult.ballPosition = newBallPosition;
     return pivotResult;
 }

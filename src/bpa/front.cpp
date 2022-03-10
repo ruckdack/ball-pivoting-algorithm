@@ -29,15 +29,6 @@ std::optional<Front::ActiveEdge> Front::getActiveEdge() {
     return std::nullopt;
 }
 
-// void insertCorrespondingVertex(Edge edge, VertexIndex vertexIndex) {
-//     std::string key = toString(edge);
-//     if (correspondingVertices.find(key) == correspondingVertices.end()) {
-//         correspondingVertices[key] = std::vector<VertexIndex>{vertexIndex};
-//     } else {
-//         correspondingVertices[key].push_back(vertexIndex);
-//     }
-// }
-
 // some ballPosition and correspondingVertices entries could be deleted here
 void Front::join(const Edge edge, const VertexIndex vertexIndex, const Vertex ballPosition, const std::vector<VertexIndex> additionalCorrespVertexIndicees) {
     ASSERT(integrity());

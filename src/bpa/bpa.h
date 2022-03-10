@@ -31,7 +31,7 @@ class BPA {
         bool done;
         std::list<VertexIndex> usedVertices;
         void insertSeedTriangle(PivotResultStep pivotResultStep);
-        bool insertPivotResultStep(PivotResultStep pivotResultStep);
+        void insertPivotResultStep(PivotResultStep pivotResultStep);
         void step();
         bool used(VertexIndex vertexIndex);
         PivotResult findSeedTriangle();
