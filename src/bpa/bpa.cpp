@@ -182,8 +182,8 @@ BPA::PivotResult BPA::findSeedTriangle() {
         pivotResult.vertices = std::vector<VertexIndex>();
         return pivotResult;
     }
-    ASSERTM(equals(len(conn(vertices[minVertex], ballPosition)), ballRadius), "inital ball is placed incorrectly");
-    ASSERTM(equals(len(conn(vertices[rollableNeighbour], ballPosition)), ballRadius), "inital ball is placed incorrectly");
+    ASSERTM(assertionEquals(len(conn(vertices[minVertex], ballPosition)), ballRadius), "inital ball is placed incorrectly");
+    ASSERTM(assertionEquals(len(conn(vertices[rollableNeighbour], ballPosition)), ballRadius), "inital ball is placed incorrectly");
     Edge firstEdge = {minVertex, rollableNeighbour};
     // try rolling the ball in one direction
     PivotResult pivotResult = ballPivot(firstEdge, ballPosition, std::nullopt, std::vector<VertexIndex>());
@@ -217,12 +217,12 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
     Vector m_to_b = conn(m, b);
     double l_e = len(e_i_to_e_j);
     double r_c = std::sqrt(r_b*r_b - 0.25*l_e*l_e);
-    ASSERTM(equals(len(m_to_b), r_c), "m_to_b is not circle radius away from edge midpoint");
+    ASSERTM(assertionEquals(len(m_to_b), r_c), "m_to_b is not circle radius away from edge midpoint");
     double r_c_sq = r_c*r_c;
-    ASSERTM(equals(len(conn(e_i, b)), r_b), "ball is placed incorrectly");
-    ASSERTM(equals(len(conn(e_j, b)), r_b), "ball is placed incorrectly");
+    ASSERTM(assertionEquals(len(conn(e_i, b)), r_b), "ball is placed incorrectly");
+    ASSERTM(assertionEquals(len(conn(e_j, b)), r_b), "ball is placed incorrectly");
     Vector n = setMag(cross(e_i_to_e_j, m_to_b), 1.0);
-    ASSERTM(equals(n*m_to_b, 0.0), "normal is not perpendicular to plane(e_i, e_j, b)");
+    ASSERTM(assertionEquals(n*m_to_b, 0.0), "normal is not perpendicular to plane(e_i, e_j, b)");
     std::vector<VertexIndex> newVertexIndicees;
     double maxDotProduct = correspVertexIndex.has_value() ? calcStartingScalarProduct(e_i, e_j, vertices[correspVertexIndex.value()], b) : -1.0;
     maxDotProduct *= r_c_sq;
@@ -244,11 +244,13 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         sphere.radius = r_b;
         std::vector<Vertex> intersections = intersectCircleSphere(circle, sphere);
         for (Vertex i : intersections) {
-            ASSERTM(equals(len(conn(e_i, i)), r_b), "intersection is not ball radius away from edgepoint i");
-            ASSERTM(equals(len(conn(e_j, i)), r_b), "intersection is not ball radius away from edgepoint j");
-            ASSERTM(equals(len(conn(vertices[neighbour], i)), r_b), "intersection is not ball radius away from neighbour");
             Vector m_to_i = conn(m, i);
-            ASSERTM(equals(len(m_to_i), r_c), "intersection is not circle radius away from edge midpoint");
+            #ifdef DEBUG
+                ASSERTM(assertionEquals(len(conn(e_i, i)), r_b), "intersection is not ball radius away from edgepoint i");
+                ASSERTM(assertionEquals(len(conn(e_j, i)), r_b), "intersection is not ball radius away from edgepoint j");
+                ASSERTM(assertionEquals(len(conn(vertices[neighbour], i)), r_b), "intersection is not ball radius away from neighbour");
+                ASSERTM(assertionEquals(len(m_to_i), r_c), "intersection is not circle radius away from edge midpoint");
+            #endif
             double p = m_to_b * m_to_i;
             if (n * m_to_i < 0.0) {
                 p = -p - 2*r_c_sq;
@@ -271,12 +273,14 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
     #ifdef DEBUG // these are only assertions
         DBOUT << "found " << newVertexIndicees.size() << " new vertices:" << std::endl;
         for (VertexIndex newVertexIndex: newVertexIndicees) {
-            DBOUT << " - in coords: (" << vertices[newVertexIndex].x << "," << vertices[newVertexIndex].y << "," << vertices[newVertexIndex].z << ")" << std::endl;
-            ASSERTM(equals(len(conn(newBallPosition, vertices[newVertexIndex])), r_b), "new ball is not ball radius away from new vertex");
+            DBOUT << " - in coords: (" << vertices[newVertexIndex].x << "," << vertices[newVertexIndex].y << "," << vertices[newVertexIndex].z 
+                  << ") with distance to ball pos: " << len(conn(newBallPosition, vertices[newVertexIndex])) 
+                  << ", dist - ball radius: " << len(conn(newBallPosition, vertices[newVertexIndex])) - r_b << std::endl;
+            ASSERTM(assertionEquals(len(conn(newBallPosition, vertices[newVertexIndex])), r_b), "new ball is not ball radius away from new vertex");
         }
         DBOUT << "rotating ball to position: (" << newBallPosition.x << "," << newBallPosition.y << "," << newBallPosition.z << "), or " << maxDotProduct << " in dot product" << std::endl;
-        ASSERTM(equals(len(conn(e_i, newBallPosition)), r_b), "new ball is not ball radius away from edgepoint i");
-        ASSERTM(equals(len(conn(e_j, newBallPosition)), r_b), "new ball is not ball radius away from edgepoint j");
+        ASSERTM(assertionEquals(len(conn(e_i, newBallPosition)), r_b), "new ball is not ball radius away from edgepoint i");
+        ASSERTM(assertionEquals(len(conn(e_j, newBallPosition)), r_b), "new ball is not ball radius away from edgepoint j");
         for (VertexIndex neighbour : neighbours) {
             if (std::find(newVertexIndicees.begin(), newVertexIndicees.end(), neighbour) != newVertexIndicees.end()) continue;
             if (equals(std::abs(len(conn(newBallPosition, vertices[neighbour])) - ballRadius), 0.0)) {
@@ -331,7 +335,7 @@ std::vector<Vertex> BPA::intersectCircleSphere(const Circle circle, const Sphere
     ASSERT(!std::isnan(circle.normal.x) && !std::isnan(circle.normal.y) && !std::isnan(circle.normal.z));
     ASSERT(circle.radius > 0.0);
     ASSERT(sphere.radius > 0.0);
-    ASSERTM(equals(len(circle.normal), 1.0), "circle normal is not normalized");
+    ASSERTM(assertionEquals(len(circle.normal), 1.0), "circle normal is not normalized");
     std::vector<Vertex> intersections;
     if (len(conn(circle.center, sphere.center)) > circle.radius + sphere.radius) {
         return intersections;
@@ -366,8 +370,8 @@ std::vector<Vertex> BPA::intersectCircleSphere(const Circle circle, const Sphere
     Vector dir_h = cross(circle.normal, P_0_to_P_1);
     Vertex i1 = toVertex(conn({0,0,0}, P_2) + setMag(dir_h, h));
     Vertex i2 = toVertex(conn({0,0,0}, P_2) + setMag(dir_h, -h));
-    ASSERTM(equals(len(conn(i1, circle.center)), circle.radius), "intersection is not circle radius away from circle center");
-    ASSERTM(equals(len(conn(i1, sphere.center)), sphere.radius), "intersection is not sphere radius away from sphere center");
+    ASSERTM(assertionEquals(len(conn(i1, circle.center)), circle.radius), "intersection is not circle radius away from circle center");
+    ASSERTM(assertionEquals(len(conn(i1, sphere.center)), sphere.radius), "intersection is not sphere radius away from sphere center");
     intersections.push_back(i1);
     intersections.push_back(i2);
     return intersections;
@@ -397,7 +401,7 @@ std::optional<Circle> BPA::intersectSphereSphere(const Sphere sphere1, const Sph
 }
 
 std::optional<Vertex> BPA::calcMinAlongXAxis(const Circle circle) {
-    ASSERTM(equals(len(circle.normal), 1.0), "circle normal is not normalized");
+    ASSERTM(assertionEquals(len(circle.normal), 1.0), "circle normal is not normalized");
     Vector negXAxis = {-1,0,0};
     if (equals(circle.normal * negXAxis, -1.0)) {
     //     // circle lays in y-z-plane, no min x
@@ -418,7 +422,7 @@ std::optional<Vertex> BPA::calcMinAlongXAxis(const Circle circle) {
     // l: proj
     double t = ((conn({0,0,0}, circle.center) - minXValueVector) * circle.normal) / (proj * circle.normal);
     Vertex intersection = toVertex(minXValueVector + t * proj);
-    ASSERTM(equals(len(conn(intersection, circle.center)), circle.radius), "found intersection is not circle.radius away from circle.center => not on circle");
+    ASSERTM(assertionEquals(len(conn(intersection, circle.center)), circle.radius), "found intersection is not circle.radius away from circle.center => not on circle");
     return intersection;
 }
 
