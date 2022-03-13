@@ -2,12 +2,14 @@
 #include "bpa/bpa.h"
 #include "helpers/helpers.h"
 #include "io/io.h"
+#include "normals/normals.h"
 #include "trace.h"
 
 #include <iostream>
 #include <string>
 #include <cmath>
 #include <chrono>
+#include <cassert>
 
 
 
@@ -35,17 +37,18 @@ int main(int argc, char *argv[]) {
         BPA bpa(points, ballRadius);
         BPA::Result result = bpa.run();
         auto end = std::chrono::steady_clock::now();
-        std::chrono::duration<float> elapsed_seconds = end-start;
+        std::chrono::duration<float> elapsed_seconds = end - start;
         INFOUT << "Reconstructed "
-        << result.triangles.size() << (result.triangles.size() == 1 ? " triangle " : " triangles")
+        << result.faces.size() << (result.faces.size() == 1 ? " face " : " faces")
         << " in " << std::round(elapsed_seconds.count()) 
         << (std::round(elapsed_seconds.count()) == 1 ? " second." : " seconds.") << std::endl;
+        Normals::VertexNormals vertexNormals = Normals::calculateVertexNormals(points, result.faces, result.faceNormals);
         INFOUT << "Used " << result.numOfUsedVertices << (result.numOfUsedVertices == 1 ? " vertex (" : " vertices (")
                << roundToDigits(result.numOfUsedVertices / static_cast<float>(points.size), 2) << "% of total vertices amount)." << std::endl;
         if (result.boundaryExists) {
             INFOUT << "A boundary was found." << std::endl;
         }
-        IO::writeMesh(outputPath, points, result.triangles);
+        IO::writeMesh(outputPath, points, result.faces, vertexNormals.normalDeviations);
     } catch (const std::runtime_error& error) {
         ERROUT << error.what() << std::endl;
         return -1;

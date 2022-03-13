@@ -5,7 +5,6 @@
 #include "front.h"
 #include "../trace.h"
 
-#include <list>
 #include <optional>
 #include <tuple>
 
@@ -23,9 +22,10 @@ class BPA {
             std::vector<VertexIndex> additionalCorrespVertexIndicees;
         };
         const Vertices vertices;
-        const Vectors normals;
+        const Vectors pointcloudNormals;
         const double ballRadius;
         std::list<Triangle> faces;
+        std::list<Vector> faceNormals;
         Query query;
         Front front;
         bool done;
@@ -44,7 +44,8 @@ class BPA {
         void printFaceIndicees(Triangle triangle);
     public:
         struct Result {
-            std::list<Triangle> triangles;
+            std::vector<Triangle> faces;
+            Vectors faceNormals;
             bool boundaryExists;
             size_t numOfUsedVertices;
         };

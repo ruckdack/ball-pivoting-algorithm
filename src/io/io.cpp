@@ -2,6 +2,7 @@
 #include "io_details.h"
 
 #include "../helpers/helpers.h"
+#include "../bpa/primitives.h"
 #include "../trace.h"
 
 #include <fstream>
@@ -73,7 +74,8 @@ Vector IO::readNormal(std::vector<std::string> splittedLine) {
     double x = std::stof(splittedLine[1]);
     double y = std::stof(splittedLine[2]);
     double z = std::stof(splittedLine[3]);
-    return {x, y, z};
+    Vector normal = {x, y, z};
+    return normal;
 }
 
 PointIndex IO::readPointIndex(std::vector<std::string> splittedLine) {
@@ -93,7 +95,7 @@ PointIndex IO::readPointIndex(std::vector<std::string> splittedLine) {
     return pointIndex;
 }
 
-void IO::writeMesh(std::string path, Points &points, std::list<Triangle> &faces) {
+void IO::writeMesh(std::string path, Points &points, std::vector<Triangle> &faces, std::vector<float> &normalsDeviations) {
     std::ofstream file(path);
     if (!file.is_open()) {
         throw std::runtime_error("Creating file failed.");
@@ -101,11 +103,14 @@ void IO::writeMesh(std::string path, Points &points, std::list<Triangle> &faces)
     for (Vertex vertex : points.vertices) {
         file << "v " << vertex.x << " " << vertex.y << " " << vertex.z << std::endl;
     }
+    for (float normalsDeviation : normalsDeviations) {
+        file << "vt " << normalsDeviation << " 0.5" << std::endl;
+    }
     for (Triangle face : faces) {
         file << "f";
-        file << " " << face.i + 1 << "//" << face.i + 1;
-        file << " " << face.j + 1 << "//" << face.j + 1;
-        file << " " << face.k + 1 << "//" << face.k + 1;
+        file << " " << face.i + 1 << "/" << face.i + 1 << "/" << face.i + 1;
+        file << " " << face.j + 1 << "/" << face.j + 1 << "/" << face.j + 1;
+        file << " " << face.k + 1 << "/" << face.k + 1 << "/" << face.k + 1;
         file << std::endl;
     }
 }

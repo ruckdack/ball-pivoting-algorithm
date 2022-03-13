@@ -14,12 +14,12 @@
 
 BPA::BPA(const Points &p, const double ballRad)
 : vertices(p.vertices)
-, normals(p.normals)
+, pointcloudNormals(p.normals)
 , ballRadius(ballRad)
 , query(vertices, 2*ballRadius)
 , done(false) {
     ASSERT(p.size == vertices.size());
-    ASSERT(p.size == normals.size());
+    ASSERT(p.size == pointcloudNormals.size());
 }
 
 BPA::Result BPA::run() {
@@ -32,16 +32,19 @@ BPA::Result BPA::run() {
             std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
             Points points = {};
             points.vertices = vertices;
-            points.normals = normals;
+            points.normals = pointcloudNormals;
             points.size = vertices.size();
-            IO::writeMesh(path, points, faces);
+            std::vector<float> empty;
+            std::vector<Triangle> triangles = convertFromListToVector(faces);
+            IO::writeMesh(path, points, triangles, empty);
         }
         counter++;
         DBOUT << "count: " << counter << std::endl;
         #endif
     }
     Result result;
-    result.triangles = faces;
+    result.faces = convertFromListToVector(faces);
+    result.faceNormals = convertFromListToVector(faceNormals);
     result.boundaryExists = front.nonemptyBoundary();
     result.numOfUsedVertices = usedVertices.size();
     return result;
@@ -51,6 +54,8 @@ void BPA::insertSeedTriangle(BPA::PivotResultStep pivotResultStep) {
     Triangle seedTriangle = { pivotResultStep.edge.j, pivotResultStep.edge.i, pivotResultStep.vertex};
     Vertex newBallPosition = pivotResultStep.ballPosition;
     faces.push_back(seedTriangle);
+    Vector faceNormal = setMag(cross(conn(vertices[seedTriangle.i], vertices[seedTriangle.j]), conn(vertices[seedTriangle.i], vertices[seedTriangle.k])), 1.0);
+    faceNormals.push_back(faceNormal);
     DBOUT << "inital triangle: " << std::endl;
     printFaceIndicees(seedTriangle);
     VertexIndex i = seedTriangle.i;
@@ -69,10 +74,12 @@ void BPA::insertPivotResultStep(BPA::PivotResultStep pivotResultStep) {
     std::vector<VertexIndex> additionalCorrespVertexIndicees = pivotResultStep.additionalCorrespVertexIndicees;
     ASSERT(!used(vertexIndex) || front.contains(vertexIndex));
     Triangle newFace = {edge.i, vertexIndex, edge.j};
+    Vector faceNormal = setMag(cross(conn(vertices[edge.i], vertices[vertexIndex]), conn(vertices[edge.i], vertices[edge.j])), 1.0);
     for (Triangle face : faces) {
         ASSERTM(face != newFace, "cannot add already reconstructed face again");
     }
     faces.push_back(newFace);
+    faceNormals.push_back(faceNormal);
     usedVertices.push_back(vertexIndex);
     front.join(edge, vertexIndex, newBallPosition, additionalCorrespVertexIndicees);
     DBOUT << "new triangle: " << std::endl;
@@ -244,6 +251,7 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         sphere.radius = r_b;
         std::vector<Vertex> intersections = intersectCircleSphere(circle, sphere);
         for (Vertex i : intersections) {
+            if (equals(i, ballPosition)) continue;
             Vector m_to_i = conn(m, i);
             #ifdef DEBUG
                 ASSERTM(assertionEquals(len(conn(e_i, i)), r_b), "intersection is not ball radius away from edgepoint i");
@@ -269,6 +277,18 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         PivotResult pivotResult = {};
         pivotResult.vertices = std::vector<VertexIndex>();
         return pivotResult;
+    }
+    for (VertexIndex newVertexIndex : newVertexIndicees) {
+        Vector faceNormal = setMag(cross(conn(e_i, vertices[newVertexIndex]), e_i_to_e_j), 1.0);
+        float MAX_ANGLE = M_PI_2;
+        if (std::acos(pointcloudNormals[edge.i]*faceNormal) > MAX_ANGLE ||
+            std::acos(pointcloudNormals[edge.j]*faceNormal) > MAX_ANGLE ||
+            std::acos(pointcloudNormals[newVertexIndex]*faceNormal) > MAX_ANGLE) {
+            DBOUT << "normals of found face deviate too much from vertex normals" << std::endl;
+            PivotResult pivotResult = {};
+            pivotResult.vertices = std::vector<VertexIndex>();
+            return pivotResult;
+        }
     }
     #ifdef DEBUG // these are only assertions
         DBOUT << "found " << newVertexIndicees.size() << " new vertices:" << std::endl;
@@ -407,7 +427,7 @@ std::optional<Vertex> BPA::calcMinAlongXAxis(const Circle circle) {
     //     // circle lays in y-z-plane, no min x
         return std::nullopt;
     }
-    double angleToNegXAxis = std::acos(negXAxis*circle.normal);
+    double angleToNegXAxis = std::acos(std::clamp(negXAxis*circle.normal, -1.0, 1.0));
     // cos(angle - 90deg) = sin(angle)
     double minXValue = -circle.radius * std::sin(angleToNegXAxis);
     Vector minXValueVector = conn({0,0,0}, circle.center) + Vector({minXValue, 0.0, 0.0});
