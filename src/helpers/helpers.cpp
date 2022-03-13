@@ -36,7 +36,7 @@ std::vector<size_t> findChar(const std::string str, const char c) {
 }
 
 bool pathSyntaxValid(std::string path) {
-    std::regex reg(R"(((\.{1,2}|([A-Za-z_0-9]|\-|\+)+)\/)*([A-Za-z_0-9]|\-|\+)+\.obj)");
+    std::regex reg(R"(.*\.obj)");
     return std::regex_match(path, reg);
 }
 
