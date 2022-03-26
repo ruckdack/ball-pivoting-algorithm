@@ -30,6 +30,7 @@ int main(int argc, char *argv[]) {
         return -1;
     }
     try {
+        INFOUT << "Reading pointcloud..." << std::endl;
         Points points = IO::readCloud(inputPath);
         INFOUT << "Read " << points.size << " vertices." << std::endl;
         INFOUT << "Running computations..." << std::endl;

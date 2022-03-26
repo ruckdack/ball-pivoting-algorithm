@@ -3,3 +3,4 @@ build/
 *.blend
 output/
 .vscode
+release/

@@ -29,7 +29,7 @@ BPA::Result BPA::run() {
         // only for debugging
         #ifdef DEBUG
         if (false) {
-            std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
+            std::string path = "./output/debug/debug_" + std::to_string(counter) + ".obj";
             Points points = {};
             points.vertices = vertices;
             points.normals = pointcloudNormals;
@@ -253,7 +253,7 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         for (Vertex i : intersections) {
             if (equals(i, ballPosition)) continue;
             Vector m_to_i = conn(m, i);
-            #ifdef DEBUG
+            #ifdef ASSERTIONS
                 ASSERTM(assertionEquals(len(conn(e_i, i)), r_b), "intersection is not ball radius away from edgepoint i");
                 ASSERTM(assertionEquals(len(conn(e_j, i)), r_b), "intersection is not ball radius away from edgepoint j");
                 ASSERTM(assertionEquals(len(conn(vertices[neighbour], i)), r_b), "intersection is not ball radius away from neighbour");
@@ -278,9 +278,9 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         pivotResult.vertices = std::vector<VertexIndex>();
         return pivotResult;
     }
+    float MAX_ANGLE = M_PI_4;
     for (VertexIndex newVertexIndex : newVertexIndicees) {
         Vector faceNormal = setMag(cross(conn(e_i, vertices[newVertexIndex]), e_i_to_e_j), 1.0);
-        float MAX_ANGLE = M_PI_2;
         if (std::acos(pointcloudNormals[edge.i]*faceNormal) > MAX_ANGLE ||
             std::acos(pointcloudNormals[edge.j]*faceNormal) > MAX_ANGLE ||
             std::acos(pointcloudNormals[newVertexIndex]*faceNormal) > MAX_ANGLE) {
@@ -290,7 +290,8 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
             return pivotResult;
         }
     }
-    #ifdef DEBUG // these are only assertions
+    #ifdef ASSERTIONS
+        DBOUT << "checked " << neighbours.size() << " neighbours" << std::endl;
         DBOUT << "found " << newVertexIndicees.size() << " new vertices:" << std::endl;
         for (VertexIndex newVertexIndex: newVertexIndicees) {
             DBOUT << " - in coords: (" << vertices[newVertexIndex].x << "," << vertices[newVertexIndex].y << "," << vertices[newVertexIndex].z 
@@ -333,19 +334,25 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
 }
 
 double BPA::calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspVertex, const Vertex ballPosition) {
-    Vector edgeIJ = conn(edgeI, edgeJ);
-    Vector planeNormal = setMag(cross(edgeIJ, conn(edgeI, correspVertex)), 1.0);
-    Vector awayFromEdgeIJ = setMag(cross(edgeIJ, planeNormal), 1.0);
-    Vertex midPoint = toVertex(conn({0,0,0}, edgeI) + (0.5 * edgeIJ));
-    Vector midPointToBallPos = setMag(conn(midPoint, ballPosition), 1.0);
+    // Vector edgeIJ = conn(edgeI, edgeJ);
+    // Vector planeNormal = setMag(cross(edgeIJ, conn(edgeI, correspVertex)), 1.0);
+    // Vector awayFromEdgeIJ = setMag(cross(edgeIJ, planeNormal), 1.0);
+    // Vertex midPoint = toVertex(conn({0,0,0}, edgeI) + (0.5 * edgeIJ));
+    // Vector midPointToBallPos = setMag(conn(midPoint, ballPosition), 1.0);
     // could be optimized: is it possible to only calculate in scalar product?
-    double radian = std::acos(std::clamp(midPointToBallPos*planeNormal, -1.0, 1.0));
-    ASSERTM(radian >= 0.0, "ball is on wrong side");
-    double alpha = midPointToBallPos*awayFromEdgeIJ < 0.0 ? M_PI_2-radian+0.0001f : M_PI_2+radian+0.0001f;
-    double maxPossibleAngle = 2*M_PI - 2*alpha;
-    maxPossibleAngle = maxPossibleAngle * 0.9f;
-    if (maxPossibleAngle > M_PI) return -std::cos(maxPossibleAngle) - 2.0;
-    return std::cos(maxPossibleAngle);
+    // double radian = std::acos(std::clamp(midPointToBallPos*planeNormal, -1.0, 1.0));
+    // ASSERTM(radian >= 0.0, "ball is on wrong side");
+    // double alpha = midPointToBallPos*awayFromEdgeIJ < 0.0 ? M_PI_2-radian+0.0001f : M_PI_2+radian+0.0001f;
+    // double maxPossibleAngle = 2*M_PI - 2*alpha;
+    // maxPossibleAngle = maxPossibleAngle * 0.9f;
+    // if (maxPossibleAngle > M_PI) return -std::cos(maxPossibleAngle) - 2.0;
+    // return std::cos(maxPossibleAngle);
+    Vector edgeIJ = conn(edgeI, edgeJ);
+    Vertex m = toVertex(conn({0,0,0}, edgeI) + (0.5 * edgeIJ));
+    Vector m_to_b = conn(m, ballPosition);
+    Vector m_to_corresp = conn(m, correspVertex);
+    double startingScalarProd = 2*(m_to_b*m_to_corresp)*(m_to_b*m_to_corresp) - 1;
+    return startingScalarProd;
 }
 
 
