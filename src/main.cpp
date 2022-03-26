@@ -45,7 +45,7 @@ int main(int argc, char *argv[]) {
         << (std::round(elapsed_seconds.count()) == 1 ? " second." : " seconds.") << std::endl;
         Normals::VertexNormals vertexNormals = Normals::calculateVertexNormals(points, result.faces, result.faceNormals);
         INFOUT << "Used " << result.numOfUsedVertices << (result.numOfUsedVertices == 1 ? " vertex (" : " vertices (")
-               << roundToDigits(result.numOfUsedVertices / static_cast<float>(points.size), 2) << "% of total vertices amount)." << std::endl;
+               << roundToDigits(result.numOfUsedVertices / static_cast<float>(points.size) * 100, 2) << "% of total vertices amount)." << std::endl;
         if (result.boundaryExists) {
             INFOUT << "A boundary was found." << std::endl;
         }

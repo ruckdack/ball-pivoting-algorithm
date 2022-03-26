@@ -61,9 +61,9 @@ void BPA::insertSeedTriangle(BPA::PivotResultStep pivotResultStep) {
     VertexIndex i = seedTriangle.i;
     VertexIndex j = seedTriangle.j;
     VertexIndex k = seedTriangle.k;
-    usedVertices.push_back(i);
-    usedVertices.push_back(j);
-    usedVertices.push_back(k);
+    usedVertices.insert(i);
+    usedVertices.insert(j);
+    usedVertices.insert(k);
     front.insertSeedTriangle({i, j}, {j, k}, {k, i}, newBallPosition);
 }
 
@@ -80,7 +80,7 @@ void BPA::insertPivotResultStep(BPA::PivotResultStep pivotResultStep) {
     }
     faces.push_back(newFace);
     faceNormals.push_back(faceNormal);
-    usedVertices.push_back(vertexIndex);
+    usedVertices.insert(vertexIndex);
     front.join(edge, vertexIndex, newBallPosition, additionalCorrespVertexIndicees);
     DBOUT << "new triangle: " << std::endl;
     printFaceIndicees(newFace);
@@ -278,7 +278,7 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         pivotResult.vertices = std::vector<VertexIndex>();
         return pivotResult;
     }
-    float MAX_ANGLE = M_PI_4;
+    float MAX_ANGLE = M_PI_2;
     for (VertexIndex newVertexIndex : newVertexIndicees) {
         Vector faceNormal = setMag(cross(conn(e_i, vertices[newVertexIndex]), e_i_to_e_j), 1.0);
         if (std::acos(pointcloudNormals[edge.i]*faceNormal) > MAX_ANGLE ||
@@ -351,8 +351,9 @@ double BPA::calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, co
     Vertex m = toVertex(conn({0,0,0}, edgeI) + (0.5 * edgeIJ));
     Vector m_to_b = conn(m, ballPosition);
     Vector m_to_corresp = conn(m, correspVertex);
-    double startingScalarProd = 2*(m_to_b*m_to_corresp)*(m_to_b*m_to_corresp) - 1;
-    return startingScalarProd;
+    double s = m_to_b*m_to_corresp;
+    if (s < 0) return 2*s*s - 1;
+    return -2*s*s - 1;
 }
 
 

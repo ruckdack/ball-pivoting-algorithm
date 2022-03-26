@@ -7,6 +7,7 @@
 
 #include <optional>
 #include <tuple>
+#include <set>
 
 class BPA {
     private:
@@ -29,7 +30,7 @@ class BPA {
         Query query;
         Front front;
         bool done;
-        std::list<VertexIndex> usedVertices;
+        std::set<VertexIndex> usedVertices;
         void insertSeedTriangle(PivotResultStep pivotResultStep);
         void insertPivotResultStep(PivotResultStep pivotResultStep);
         void step();
