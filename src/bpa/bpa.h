@@ -21,7 +21,6 @@ class BPA {
             Edge edge;
             VertexIndex vertex;
             Vertex ballPosition;
-            std::vector<VertexIndex> additionalCorrespVertexIndicees;
         };
         const Vertices vertices;
         const double ballRadius;
@@ -30,13 +29,14 @@ class BPA {
         Query query;
         Front front;
         bool done;
+        bool multiRollingOccured;
         std::unordered_set<VertexIndex> usedVertices;
         void insertSeedTriangle(PivotResultStep pivotResultStep);
         void insertPivotResultStep(PivotResultStep pivotResultStep);
         void step();
         bool used(VertexIndex vertexIndex);
         PivotResult findSeedTriangle();
-        PivotResult ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspVertexIndex, const std::vector<VertexIndex> additonalCorrespVertexIndicees);
+        PivotResult ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspVertexIndex);
         std::vector<PivotResultStep> serializePivotResult(PivotResult pivotResult);
         double calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspVertex, const Vertex ballPosition, const double circleRadius);
         std::vector<Vertex> intersectCircleSphere(const Circle circle, const Sphere sphere);
@@ -48,6 +48,7 @@ class BPA {
             std::vector<Triangle> faces;
             bool boundaryExists;
             size_t numOfUsedVertices;
+            bool multiRollingOccured;
         };
         BPA(const Vertices &vertices, const double ballRadius);
         Result run();

@@ -16,11 +16,6 @@ std::optional<Front::ActiveEdge> Front::getActiveEdge() {
                 activeEdge.edge = edge;
                 activeEdge.ballPosition = ballPositions[edge];
                 activeEdge.correspVertexIndex = correspVertexIndexMap[edge];
-                if (false && additionalCorrespVertexIndiceesMap.count(edge)) {
-                    activeEdge.additionalCorrespVertexIndicees = additionalCorrespVertexIndiceesMap[edge];
-                } else {
-                    activeEdge.additionalCorrespVertexIndicees = std::vector<VertexIndex>();
-                }
                 return activeEdge;
             }
         }
@@ -30,7 +25,7 @@ std::optional<Front::ActiveEdge> Front::getActiveEdge() {
 }
 
 // some ballPosition and correspondingVertices entries could be deleted here
-void Front::join(const Edge edge, const VertexIndex vertexIndex, const Vertex ballPosition, const std::vector<VertexIndex> additionalCorrespVertexIndicees) {
+void Front::join(const Edge edge, const VertexIndex vertexIndex, const Vertex ballPosition) {
     ASSERT(integrity());
     for (Loop &loop : front) {
         auto edgeIter = std::find(loop.begin(), loop.end(), edge);
@@ -43,10 +38,6 @@ void Front::join(const Edge edge, const VertexIndex vertexIndex, const Vertex ba
             ballPositions[edge2] = ballPosition;
             correspVertexIndexMap[edge1] = edge.j;
             correspVertexIndexMap[edge2] = edge.i;
-            if (additionalCorrespVertexIndicees.size() > 0) {
-                additionalCorrespVertexIndiceesMap[edge1] = additionalCorrespVertexIndicees;
-                additionalCorrespVertexIndiceesMap[edge2] = additionalCorrespVertexIndicees;
-            }
             loop.erase(edgeIter);
             ASSERT(integrity());
             ASSERT(!contains(edge));

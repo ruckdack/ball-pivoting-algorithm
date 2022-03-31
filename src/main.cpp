@@ -49,9 +49,9 @@ int main(int argc, char *argv[]) {
         << (std::round(elapsed_seconds.count()) == 1 ? " second." : " seconds.") << std::endl;
         INFOUT << "Used " << result.numOfUsedVertices << (result.numOfUsedVertices == 1 ? " vertex (" : " vertices (")
                << roundToDigits(result.numOfUsedVertices / static_cast<float>(vertices.size()) * 100, 2) << "% of total vertices amount)." << std::endl;
-        if (result.boundaryExists) {
-            INFOUT << "A boundary was found." << std::endl;
-        }
+        if (result.multiRollingOccured) INFOUT << "Muli-rolling occured." << std::endl;
+        else INFOUT << "Muli-rolling did not occur." << std::endl;
+        if (result.boundaryExists) INFOUT << "A boundary was found." << std::endl;
         IO::writeMesh(outputPath, vertices, result.faces);
     } catch (const std::runtime_error& error) {
         ERROUT << error.what() << std::endl;

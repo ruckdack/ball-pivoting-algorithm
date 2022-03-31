@@ -18,7 +18,8 @@ BPA::BPA(const Vertices &v, const double ballRad)
 : vertices(v)
 , ballRadius(ballRad)
 , query(vertices, 2*ballRadius)
-, done(false) {
+, done(false)
+, multiRollingOccured(false) {
 }
 
 BPA::Result BPA::run() {
@@ -40,6 +41,7 @@ BPA::Result BPA::run() {
     result.faces = convertToVector(faces);
     result.boundaryExists = front.nonemptyBoundary();
     result.numOfUsedVertices = usedVertices.size();
+    result.multiRollingOccured = multiRollingOccured;
     return result;
 }
 
@@ -47,8 +49,8 @@ void BPA::insertSeedTriangle(BPA::PivotResultStep pivotResultStep) {
     Triangle seedTriangle = { pivotResultStep.edge.j, pivotResultStep.edge.i, pivotResultStep.vertex};
     Vertex newBallPosition = pivotResultStep.ballPosition;
     faces.insert(seedTriangle);
-    // Vector faceNormal = setMag(cross(conn(vertices[seedTriangle.i], vertices[seedTriangle.j]), conn(vertices[seedTriangle.i], vertices[seedTriangle.k])), 1.0);
-    // faceNormals.push_back(faceNormal);
+    Vector faceNormal = setMag(cross(conn(vertices[seedTriangle.i], vertices[seedTriangle.j]), conn(vertices[seedTriangle.i], vertices[seedTriangle.k])), 1.0);
+    seedTriangle.normal = faceNormal;
     DBOUT << "inital triangle: " << std::endl;
     printFaceIndicees(seedTriangle);
     VertexIndex i = seedTriangle.i;
@@ -64,13 +66,14 @@ void BPA::insertPivotResultStep(BPA::PivotResultStep pivotResultStep) {
     Edge edge = pivotResultStep.edge;
     VertexIndex vertexIndex = pivotResultStep.vertex;
     Vertex newBallPosition = pivotResultStep.ballPosition;
-    std::vector<VertexIndex> additionalCorrespVertexIndicees = pivotResultStep.additionalCorrespVertexIndicees;
     ASSERT(!used(vertexIndex) || front.contains(vertexIndex));
     Triangle newFace = {edge.i, vertexIndex, edge.j};
+    Vector faceNormal = setMag(cross(conn(vertices[edge.i], vertices[edge.j]), conn(vertices[edge.i], vertices[vertexIndex])), 1.0);
+    newFace.normal = faceNormal;
     ASSERTM(!faces.count(newFace), "cannot add already reconstructed face again");
     faces.insert(newFace);
     usedVertices.insert(vertexIndex);
-    front.join(edge, vertexIndex, newBallPosition, additionalCorrespVertexIndicees);
+    front.join(edge, vertexIndex, newBallPosition);
     DBOUT << "new triangle: " << std::endl;
     printFaceIndicees(newFace);
     ASSERT(!front.contains(edge));
@@ -108,12 +111,11 @@ void BPA::step() {
             Edge edge = optionalActiveEdge.value().edge;
             Vertex ballPosition = optionalActiveEdge.value().ballPosition;
             VertexIndex correspVertexIndex = optionalActiveEdge.value().correspVertexIndex;
-            std::vector<VertexIndex> additionalCorrespVertexIndicees = optionalActiveEdge.value().additionalCorrespVertexIndicees;
-            PivotResult pivotResult = ballPivot(edge, ballPosition, correspVertexIndex, additionalCorrespVertexIndicees);
+            PivotResult pivotResult = ballPivot(edge, ballPosition, correspVertexIndex);
             // filter for only on boundary or not used
             std::vector<VertexIndex> filteredVertices;
             for (VertexIndex vertexIndex : pivotResult.vertices) {
-                if (!used(vertexIndex) || front.contains(vertexIndex)) {// || correspVertexIndex == vertexIndex) {
+                if (!used(vertexIndex) || front.contains(vertexIndex)) {
                     filteredVertices.push_back(vertexIndex);
                 }
             }
@@ -181,11 +183,11 @@ BPA::PivotResult BPA::findSeedTriangle() {
     ASSERTM(assertionEquals(len(conn(vertices[rollableNeighbour], ballPosition)), ballRadius), "inital ball is placed incorrectly");
     Edge firstEdge = {minVertex, rollableNeighbour};
     // try rolling the ball in one direction
-    PivotResult pivotResult = ballPivot(firstEdge, ballPosition, std::nullopt, std::vector<VertexIndex>());
+    PivotResult pivotResult = ballPivot(firstEdge, ballPosition, std::nullopt);
     if (pivotResult.vertices.size() == 0) {
         // try rolling into other direction
         firstEdge = {firstEdge.j, firstEdge.i};
-        PivotResult pivotResult = ballPivot(firstEdge, ballPosition, std::nullopt, std::vector<VertexIndex>());
+        PivotResult pivotResult = ballPivot(firstEdge, ballPosition, std::nullopt);
         if (pivotResult.vertices.size() == 0) {
             DBOUT << "inital ball rolling touched no vertex" << std::endl;
             return pivotResult;
@@ -195,7 +197,7 @@ BPA::PivotResult BPA::findSeedTriangle() {
     return pivotResult;
 }
 
-BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspVertexIndex, const std::vector<VertexIndex> additionalCorrespVertexIndicees) {
+BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspVertexIndex) {
     std::vector<VertexIndex> neighbours = query.getNeighbourhood(edge);
     Vertex e_i = vertices[edge.i];
     Vertex e_j = vertices[edge.j];
@@ -228,9 +230,6 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
     #pragma omp parallel for
     for (VertexIndex neighbour : neighbours) {
         if (correspVertexIndex && correspVertexIndex.value() == neighbour) {
-            continue;
-        }
-        if (std::find(additionalCorrespVertexIndicees.begin(), additionalCorrespVertexIndicees.end(), neighbour) != additionalCorrespVertexIndicees.end()) {
             continue;
         }
         Sphere sphere = {};
@@ -268,20 +267,20 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         pivotResult.vertices = std::vector<VertexIndex>();
         return pivotResult;
     }
+    if (newVertexIndicees.size() > 1) multiRollingOccured = true;
     float MAX_ANGLE = M_PI_2;
-    // for (VertexIndex newVertexIndex : newVertexIndicees) {
-    //     // this face normal is only correct under the assumption that all new vertex indicees are approximately planar
-    //     Vector faceNormal = setMag(cross(conn(e_i, vertices[newVertexIndex]), e_i_to_e_j), 1.0);
-    //     if (std::acos(pointcloudNormals[edge.i]*faceNormal) > MAX_ANGLE ||
-    //         std::acos(pointcloudNormals[edge.j]*faceNormal) > MAX_ANGLE ||
-    //         std::acos(pointcloudNormals[newVertexIndex]*faceNormal) > MAX_ANGLE) {
-    //         DBOUT << "normals of found face deviate too much from vertex normals" << std::endl;
-    //         PivotResult pivotResult = {};
-    //         pivotResult.vertices = std::vector<VertexIndex>();
-    //         return pivotResult;
-    //     }
-    // }
-    if (newVertexIndicees.size() > 1) std::cout << "damn" << std::endl;
+    for (VertexIndex newVertexIndex : newVertexIndicees) {
+        // this face normal is only correct under the assumption that all new vertex indicees are approximately planar
+        Vector faceNormal = setMag(cross(conn(e_i, vertices[newVertexIndex]), e_i_to_e_j), 1.0);
+        if (std::acos(vertices[edge.i].inputNormal*faceNormal) > MAX_ANGLE ||
+            std::acos(vertices[edge.j].inputNormal*faceNormal) > MAX_ANGLE ||
+            std::acos(vertices[newVertexIndex].inputNormal*faceNormal) > MAX_ANGLE) {
+            DBOUT << "normals of found face deviate too much from vertex normals" << std::endl;
+            PivotResult pivotResult = {};
+            pivotResult.vertices = std::vector<VertexIndex>();
+            return pivotResult;
+        }
+    }
     #ifdef ASSERTIONS
         DBOUT << "checked " << neighbours.size() << " neighbours" << std::endl;
         DBOUT << "found " << newVertexIndicees.size() << " new vertices:" << std::endl;
@@ -444,7 +443,6 @@ std::vector<BPA::PivotResultStep> BPA::serializePivotResult(BPA::PivotResult piv
         pivotResultStep.edge = pivotResult.edge;
         pivotResultStep.vertex = pivotResult.vertices[0];
         pivotResultStep.ballPosition = pivotResult.ballPosition;
-        pivotResultStep.additionalCorrespVertexIndicees = std::vector<VertexIndex>();
         return std::vector<PivotResultStep>(1, pivotResultStep);
     }
     Vector JtoINormalized = setMag(conn(vertices[pivotResult.edge.j], vertices[pivotResult.edge.i]), 1.0);
@@ -465,14 +463,6 @@ std::vector<BPA::PivotResultStep> BPA::serializePivotResult(BPA::PivotResult piv
         pivotResultStep.edge = {*it, pivotResult.edge.j};
         pivotResultStep.vertex = *std::next(it);
         pivotResultStep.ballPosition = pivotResult.ballPosition;
-        std::vector<VertexIndex> additionalCorrespVertexIndicees;
-        additionalCorrespVertexIndicees.reserve(sorted.size() - 1);
-        for (VertexIndex vertexIndex : sorted) {
-            if (vertexIndex == pivotResultStep.vertex) continue;
-            if (vertexIndex == pivotResultStep.edge.i) continue;
-            additionalCorrespVertexIndicees.push_back(vertexIndex);
-        }
-        pivotResultStep.additionalCorrespVertexIndicees = additionalCorrespVertexIndicees;
         serialized.push_back(pivotResultStep);
     }
     ASSERT(serialized.size() + 1 == sorted.size());
