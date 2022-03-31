@@ -11,13 +11,13 @@ std::optional<Front::ActiveEdge> Front::getActiveEdge() {
     ASSERT(integrity());
     for (Loop loop : front) {
         for (Edge edge : loop) {
-            if (!boundaryContains(edge)) {
+            if (!boundary.count(edge)) {
                 ActiveEdge activeEdge = {};
                 activeEdge.edge = edge;
-                activeEdge.ballPosition = ballPositions[toString(edge)];
-                activeEdge.correspVertexIndex = correspVertexIndexMap[toString(edge)];
-                if (additionalCorrespVertexIndiceesMap.find(toString(edge)) != additionalCorrespVertexIndiceesMap.end()) {
-                    activeEdge.additionalCorrespVertexIndicees = additionalCorrespVertexIndiceesMap[toString(edge)];
+                activeEdge.ballPosition = ballPositions[edge];
+                activeEdge.correspVertexIndex = correspVertexIndexMap[edge];
+                if (additionalCorrespVertexIndiceesMap.count(edge)) {
+                    activeEdge.additionalCorrespVertexIndicees = additionalCorrespVertexIndiceesMap[edge];
                 } else {
                     activeEdge.additionalCorrespVertexIndicees = std::vector<VertexIndex>();
                 }
@@ -39,13 +39,13 @@ void Front::join(const Edge edge, const VertexIndex vertexIndex, const Vertex ba
             Edge edge2 = {vertexIndex, edge.j};
             loop.insert(edgeIter, edge1);
             loop.insert(edgeIter, edge2);
-            ballPositions[toString(edge1)] = ballPosition;
-            ballPositions[toString(edge2)] = ballPosition;
-            correspVertexIndexMap[toString(edge1)] = edge.j;
-            correspVertexIndexMap[toString(edge2)] = edge.i;
+            ballPositions[edge1] = ballPosition;
+            ballPositions[edge2] = ballPosition;
+            correspVertexIndexMap[edge1] = edge.j;
+            correspVertexIndexMap[edge2] = edge.i;
             if (additionalCorrespVertexIndicees.size() > 0) {
-                additionalCorrespVertexIndiceesMap[toString(edge1)] = additionalCorrespVertexIndicees;
-                additionalCorrespVertexIndiceesMap[toString(edge2)] = additionalCorrespVertexIndicees;
+                additionalCorrespVertexIndiceesMap[edge1] = additionalCorrespVertexIndicees;
+                additionalCorrespVertexIndiceesMap[edge2] = additionalCorrespVertexIndicees;
             }
             loop.erase(edgeIter);
             ASSERT(integrity());
@@ -119,6 +119,8 @@ void Front::glue(Edge edge1, Edge edge2) {
     loop1Iterator->erase(edge1Iterator);
     loop1Iterator->erase(edge2Iterator);
     front.erase(loop2Iterator);
+    boundary.erase(edge1);
+    boundary.erase(edge2);
     ASSERT(!contains(edge1) && !contains(edge2));
     ASSERT(integrity());
 }
@@ -129,12 +131,12 @@ void Front::insertSeedTriangle(Edge edge1, Edge edge2, Edge edge3, Vertex ballPo
     ASSERT(edge3.j == edge1.i);
     Loop loop = { edge1, edge2, edge3 };
     front.push_back(loop);
-    ballPositions[toString(edge1)] = ballPosition;
-    ballPositions[toString(edge2)] = ballPosition;
-    ballPositions[toString(edge3)] = ballPosition;
-    correspVertexIndexMap[toString(edge1)] = edge2.j;
-    correspVertexIndexMap[toString(edge2)] = edge3.j;
-    correspVertexIndexMap[toString(edge3)] = edge1.j;
+    ballPositions[edge1] = ballPosition;
+    ballPositions[edge2] = ballPosition;
+    ballPositions[edge3] = ballPosition;
+    correspVertexIndexMap[edge1] = edge2.j;
+    correspVertexIndexMap[edge2] = edge3.j;
+    correspVertexIndexMap[edge3] = edge1.j;
     ASSERT(integrity());
 }
 
@@ -156,18 +158,9 @@ bool Front::contains(Edge edge) {
     return false;
 }
 
-bool Front::boundaryContains(Edge edge) {
-    for (Edge boundaryEdge : boundary) {
-        if (edge == boundaryEdge) {
-            return true;
-        }
-    }
-    return false;
-}
-
 void Front::markAsBoundary(Edge edge) {
-    ASSERT(!boundaryContains(edge));
-    boundary.push_back(edge);
+    ASSERT(!boundary.count(edge));
+    boundary.insert(edge);
 }
 
 bool Front::areConsecutive(Loop &loop, Loop::iterator it1, Loop::iterator it2) {

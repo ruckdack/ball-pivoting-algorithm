@@ -5,18 +5,17 @@
 #include <list>
 #include <optional>
 #include <tuple>
-#include <map>
+#include <unordered_map>
+#include <unordered_set>
 
 class Front {
     private:
         std::list<Loop> front;
-        std::list<Edge> boundary;
-        std::map<std::string, Vertex> ballPositions; // TODO dont use string keys
-        std::map<std::string, VertexIndex> correspVertexIndexMap;
-        std::map<std::string, std::vector<VertexIndex>> additionalCorrespVertexIndiceesMap;
-        // void insertCorrespondingVertex(Edge edge, VertexIndex vertexIndex);
+        std::unordered_set<Edge> boundary;
+        std::unordered_map<Edge, Vertex> ballPositions;
+        std::unordered_map<Edge, VertexIndex> correspVertexIndexMap;
+        std::unordered_map<Edge, std::vector<VertexIndex>> additionalCorrespVertexIndiceesMap;
         bool areConsecutive(Loop &loop, Loop::iterator edge1Iterator, Loop::iterator edge2Iterator);
-        bool boundaryContains(Edge edge);
         bool loopIntegrity(Loop &loop);
         bool integrity();
     public:

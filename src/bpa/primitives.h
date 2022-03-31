@@ -18,11 +18,23 @@ struct Edge {
     VertexIndex j;
 };
 
+template<> struct std::hash<Edge> {
+    inline size_t operator()(const Edge &e) const {
+        return std::hash<size_t>()(e.i) ^ std::hash<size_t>()(e.j);
+    }
+};
+
 // indexes a point vector
 struct Triangle {
     VertexIndex i;
     VertexIndex j;
     VertexIndex k;
+};
+
+template<> struct std::hash<Triangle> {
+    inline size_t operator()(const Triangle &t) const {
+        return std::hash<size_t>()(t.i) ^ std::hash<size_t>()(t.j) ^ std::hash<size_t>()(t.k);
+    }
 };
 
 struct Vector {

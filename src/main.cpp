@@ -14,6 +14,9 @@
 
 
 int main(int argc, char *argv[]) {
+    #if defined(_OPENMP)
+        INFOUT << "OpenMP enabled." << std::endl;
+    #endif
     size_t numOfArgs = 3;
     if (argc > numOfArgs + 1) {
         ERROUT << "Too many arguments." << std::endl;
@@ -37,19 +40,19 @@ int main(int argc, char *argv[]) {
         auto start = std::chrono::steady_clock::now();
         BPA bpa(points, ballRadius);
         BPA::Result result = bpa.run();
+        std::vector<float> normalsDeviation = Normals::calculateNormalsDeviation(points, result.faces);
         auto end = std::chrono::steady_clock::now();
         std::chrono::duration<float> elapsed_seconds = end - start;
         INFOUT << "Reconstructed "
         << result.faces.size() << (result.faces.size() == 1 ? " face " : " faces")
         << " in " << std::round(elapsed_seconds.count()) 
         << (std::round(elapsed_seconds.count()) == 1 ? " second." : " seconds.") << std::endl;
-        Normals::VertexNormals vertexNormals = Normals::calculateVertexNormals(points, result.faces, result.faceNormals);
         INFOUT << "Used " << result.numOfUsedVertices << (result.numOfUsedVertices == 1 ? " vertex (" : " vertices (")
                << roundToDigits(result.numOfUsedVertices / static_cast<float>(points.size) * 100, 2) << "% of total vertices amount)." << std::endl;
         if (result.boundaryExists) {
             INFOUT << "A boundary was found." << std::endl;
         }
-        IO::writeMesh(outputPath, points, result.faces, vertexNormals.normalDeviations);
+        IO::writeMesh(outputPath, points, result.faces, normalsDeviation);
     } catch (const std::runtime_error& error) {
         ERROUT << error.what() << std::endl;
         return -1;

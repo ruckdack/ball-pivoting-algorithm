@@ -7,7 +7,8 @@
 
 #include <optional>
 #include <tuple>
-#include <set>
+#include <unordered_set>
+#include <unordered_map>
 
 class BPA {
     private:
@@ -25,12 +26,12 @@ class BPA {
         const Vertices vertices;
         const Vectors pointcloudNormals;
         const double ballRadius;
-        std::list<Triangle> faces;
-        std::list<Vector> faceNormals;
+        std::unordered_set<Triangle> faces;
+        std::unordered_map<Triangle, Vector> faceNormals;
         Query query;
         Front front;
         bool done;
-        std::set<VertexIndex> usedVertices;
+        std::unordered_set<VertexIndex> usedVertices;
         void insertSeedTriangle(PivotResultStep pivotResultStep);
         void insertPivotResultStep(PivotResultStep pivotResultStep);
         void step();
@@ -38,7 +39,7 @@ class BPA {
         PivotResult findSeedTriangle();
         PivotResult ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspVertexIndex, const std::vector<VertexIndex> additonalCorrespVertexIndicees);
         std::vector<PivotResultStep> serializePivotResult(PivotResult pivotResult);
-        double calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspVertex, const Vertex ballPosition);
+        double calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspVertex, const Vertex ballPosition, const double circleRadius);
         std::vector<Vertex> intersectCircleSphere(const Circle circle, const Sphere sphere);
         std::optional<Circle> intersectSphereSphere(const Sphere sphere1, const Sphere sphere2);
         std::optional<Vertex> calcMinAlongXAxis(const Circle circle);
@@ -46,7 +47,6 @@ class BPA {
     public:
         struct Result {
             std::vector<Triangle> faces;
-            Vectors faceNormals;
             bool boundaryExists;
             size_t numOfUsedVertices;
         };

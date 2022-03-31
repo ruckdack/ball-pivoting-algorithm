@@ -9,6 +9,8 @@
 #include <set>
 #include <iostream>
 #include <map>
+#include <omp.h>
+#include <unistd.h>
 
 #define _USE_MATH_DEFINES
 
@@ -29,13 +31,13 @@ BPA::Result BPA::run() {
         // only for debugging
         #ifdef DEBUG
         if (false) {
-            std::string path = "./output/debug/debug_" + std::to_string(counter) + ".obj";
+            std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
             Points points = {};
             points.vertices = vertices;
             points.normals = pointcloudNormals;
             points.size = vertices.size();
             std::vector<float> empty;
-            std::vector<Triangle> triangles = convertFromListToVector(faces);
+            std::vector<Triangle> triangles = convertToVector(faces);
             IO::writeMesh(path, points, triangles, empty);
         }
         counter++;
@@ -43,8 +45,7 @@ BPA::Result BPA::run() {
         #endif
     }
     Result result;
-    result.faces = convertFromListToVector(faces);
-    result.faceNormals = convertFromListToVector(faceNormals);
+    result.faces = convertToVector(faces);
     result.boundaryExists = front.nonemptyBoundary();
     result.numOfUsedVertices = usedVertices.size();
     return result;
@@ -53,9 +54,9 @@ BPA::Result BPA::run() {
 void BPA::insertSeedTriangle(BPA::PivotResultStep pivotResultStep) {
     Triangle seedTriangle = { pivotResultStep.edge.j, pivotResultStep.edge.i, pivotResultStep.vertex};
     Vertex newBallPosition = pivotResultStep.ballPosition;
-    faces.push_back(seedTriangle);
-    Vector faceNormal = setMag(cross(conn(vertices[seedTriangle.i], vertices[seedTriangle.j]), conn(vertices[seedTriangle.i], vertices[seedTriangle.k])), 1.0);
-    faceNormals.push_back(faceNormal);
+    faces.insert(seedTriangle);
+    // Vector faceNormal = setMag(cross(conn(vertices[seedTriangle.i], vertices[seedTriangle.j]), conn(vertices[seedTriangle.i], vertices[seedTriangle.k])), 1.0);
+    // faceNormals.push_back(faceNormal);
     DBOUT << "inital triangle: " << std::endl;
     printFaceIndicees(seedTriangle);
     VertexIndex i = seedTriangle.i;
@@ -74,12 +75,8 @@ void BPA::insertPivotResultStep(BPA::PivotResultStep pivotResultStep) {
     std::vector<VertexIndex> additionalCorrespVertexIndicees = pivotResultStep.additionalCorrespVertexIndicees;
     ASSERT(!used(vertexIndex) || front.contains(vertexIndex));
     Triangle newFace = {edge.i, vertexIndex, edge.j};
-    Vector faceNormal = setMag(cross(conn(vertices[edge.i], vertices[vertexIndex]), conn(vertices[edge.i], vertices[edge.j])), 1.0);
-    for (Triangle face : faces) {
-        ASSERTM(face != newFace, "cannot add already reconstructed face again");
-    }
-    faces.push_back(newFace);
-    faceNormals.push_back(faceNormal);
+    ASSERTM(!faces.count(newFace), "cannot add already reconstructed face again");
+    faces.insert(newFace);
     usedVertices.insert(vertexIndex);
     front.join(edge, vertexIndex, newBallPosition, additionalCorrespVertexIndicees);
     DBOUT << "new triangle: " << std::endl;
@@ -120,12 +117,11 @@ void BPA::step() {
             Vertex ballPosition = optionalActiveEdge.value().ballPosition;
             VertexIndex correspVertexIndex = optionalActiveEdge.value().correspVertexIndex;
             std::vector<VertexIndex> additionalCorrespVertexIndicees = optionalActiveEdge.value().additionalCorrespVertexIndicees;
-            // TODO corresponding Vertices verarzten
             PivotResult pivotResult = ballPivot(edge, ballPosition, correspVertexIndex, additionalCorrespVertexIndicees);
             // filter for only on boundary or not used
             std::vector<VertexIndex> filteredVertices;
             for (VertexIndex vertexIndex : pivotResult.vertices) {
-                if (!used(vertexIndex) || front.contains(vertexIndex)) {
+                if (!used(vertexIndex) || front.contains(vertexIndex)) {// || correspVertexIndex == vertexIndex) {
                     filteredVertices.push_back(vertexIndex);
                 }
             }
@@ -208,7 +204,6 @@ BPA::PivotResult BPA::findSeedTriangle() {
 }
 
 BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspVertexIndex, const std::vector<VertexIndex> additionalCorrespVertexIndicees) {
-
     std::vector<VertexIndex> neighbours = query.getNeighbourhood(edge);
     Vertex e_i = vertices[edge.i];
     Vertex e_j = vertices[edge.j];
@@ -231,14 +226,14 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
     Vector n = setMag(cross(e_i_to_e_j, m_to_b), 1.0);
     ASSERTM(assertionEquals(n*m_to_b, 0.0), "normal is not perpendicular to plane(e_i, e_j, b)");
     std::vector<VertexIndex> newVertexIndicees;
-    double maxDotProduct = correspVertexIndex.has_value() ? calcStartingScalarProduct(e_i, e_j, vertices[correspVertexIndex.value()], b) : -1.0;
-    maxDotProduct *= r_c_sq;
-    DBOUT << "starting dot product: " << maxDotProduct << ", lays in [-3R², R²]: [" << -3*r_c_sq << ", " << r_c_sq << "]" << std::endl;
+    double maxDotProduct = correspVertexIndex.has_value() ? calcStartingScalarProduct(e_i, e_j, vertices[correspVertexIndex.value()], b, r_c) : -r_c_sq;
+    DBOUT << "starting dot product: " << maxDotProduct / r_c_sq << std::endl;
     Vertex newBallPosition;
     Circle circle = {};
     circle.center = m;
     circle.radius = r_c;
     circle.normal = setMag(e_i_to_e_j, 1.0);
+    #pragma omp parallel for
     for (VertexIndex neighbour : neighbours) {
         if (correspVertexIndex && correspVertexIndex.value() == neighbour) {
             continue;
@@ -250,25 +245,28 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         sphere.center = vertices[neighbour];
         sphere.radius = r_b;
         std::vector<Vertex> intersections = intersectCircleSphere(circle, sphere);
-        for (Vertex i : intersections) {
-            if (equals(i, ballPosition)) continue;
-            Vector m_to_i = conn(m, i);
-            #ifdef ASSERTIONS
-                ASSERTM(assertionEquals(len(conn(e_i, i)), r_b), "intersection is not ball radius away from edgepoint i");
-                ASSERTM(assertionEquals(len(conn(e_j, i)), r_b), "intersection is not ball radius away from edgepoint j");
-                ASSERTM(assertionEquals(len(conn(vertices[neighbour], i)), r_b), "intersection is not ball radius away from neighbour");
-                ASSERTM(assertionEquals(len(m_to_i), r_c), "intersection is not circle radius away from edge midpoint");
-            #endif
-            double p = m_to_b * m_to_i;
-            if (n * m_to_i < 0.0) {
-                p = -p - 2*r_c_sq;
-            }
-            if (equals(i, newBallPosition)) {
-                newVertexIndicees.push_back(neighbour);
-            } else if (p > maxDotProduct) {
-                maxDotProduct = p;
-                newVertexIndicees = {neighbour};
-                newBallPosition = i;
+        #pragma omp critical
+        {
+            for (Vertex i : intersections) {
+                if (equals(i, ballPosition)) continue;
+                Vector m_to_i = conn(m, i);
+                #ifdef ASSERTIONS
+                    ASSERTM(assertionEquals(len(conn(e_i, i)), r_b), "intersection is not ball radius away from edgepoint i");
+                    ASSERTM(assertionEquals(len(conn(e_j, i)), r_b), "intersection is not ball radius away from edgepoint j");
+                    ASSERTM(assertionEquals(len(conn(vertices[neighbour], i)), r_b), "intersection is not ball radius away from neighbour");
+                    ASSERTM(assertionEquals(len(m_to_i), r_c), "intersection is not circle radius away from edge midpoint");
+                #endif
+                double p = m_to_b * m_to_i;
+                if (n * m_to_i < 0.0) {
+                    p = -p - 2*r_c_sq;
+                }
+                if (equals(i, newBallPosition)) {
+                    newVertexIndicees.push_back(neighbour);
+                } else if (p > maxDotProduct) {
+                    maxDotProduct = p;
+                    newVertexIndicees = {neighbour};
+                    newBallPosition = i;
+                }
             }
         }
     }
@@ -279,17 +277,18 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         return pivotResult;
     }
     float MAX_ANGLE = M_PI_2;
-    for (VertexIndex newVertexIndex : newVertexIndicees) {
-        Vector faceNormal = setMag(cross(conn(e_i, vertices[newVertexIndex]), e_i_to_e_j), 1.0);
-        if (std::acos(pointcloudNormals[edge.i]*faceNormal) > MAX_ANGLE ||
-            std::acos(pointcloudNormals[edge.j]*faceNormal) > MAX_ANGLE ||
-            std::acos(pointcloudNormals[newVertexIndex]*faceNormal) > MAX_ANGLE) {
-            DBOUT << "normals of found face deviate too much from vertex normals" << std::endl;
-            PivotResult pivotResult = {};
-            pivotResult.vertices = std::vector<VertexIndex>();
-            return pivotResult;
-        }
-    }
+    // for (VertexIndex newVertexIndex : newVertexIndicees) {
+    //     // this face normal is only correct under the assumption that all new vertex indicees are approximately planar
+    //     Vector faceNormal = setMag(cross(conn(e_i, vertices[newVertexIndex]), e_i_to_e_j), 1.0);
+    //     if (std::acos(pointcloudNormals[edge.i]*faceNormal) > MAX_ANGLE ||
+    //         std::acos(pointcloudNormals[edge.j]*faceNormal) > MAX_ANGLE ||
+    //         std::acos(pointcloudNormals[newVertexIndex]*faceNormal) > MAX_ANGLE) {
+    //         DBOUT << "normals of found face deviate too much from vertex normals" << std::endl;
+    //         PivotResult pivotResult = {};
+    //         pivotResult.vertices = std::vector<VertexIndex>();
+    //         return pivotResult;
+    //     }
+    // }
     #ifdef ASSERTIONS
         DBOUT << "checked " << neighbours.size() << " neighbours" << std::endl;
         DBOUT << "found " << newVertexIndicees.size() << " new vertices:" << std::endl;
@@ -333,7 +332,8 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
     return pivotResult;
 }
 
-double BPA::calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspVertex, const Vertex ballPosition) {
+double BPA::calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspVertex, const Vertex ballPosition, const double circleRadius) {
+    double circleRadiusSquared = circleRadius*circleRadius;
     // Vector edgeIJ = conn(edgeI, edgeJ);
     // Vector planeNormal = setMag(cross(edgeIJ, conn(edgeI, correspVertex)), 1.0);
     // Vector awayFromEdgeIJ = setMag(cross(edgeIJ, planeNormal), 1.0);
@@ -348,12 +348,15 @@ double BPA::calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, co
     // if (maxPossibleAngle > M_PI) return -std::cos(maxPossibleAngle) - 2.0;
     // return std::cos(maxPossibleAngle);
     Vector edgeIJ = conn(edgeI, edgeJ);
+    Vector edgeIJ_norm = setMag(edgeIJ, 1.0);
     Vertex m = toVertex(conn({0,0,0}, edgeI) + (0.5 * edgeIJ));
     Vector m_to_b = conn(m, ballPosition);
     Vector m_to_corresp = conn(m, correspVertex);
-    double s = m_to_b*m_to_corresp;
-    if (s < 0) return 2*s*s - 1;
-    return -2*s*s - 1;
+    // double dir = m_to_corresp*edgeIJ > 0 ? -1.0 : 1.0;
+    Vector m_to_corresp_in_circle = setMag(m_to_corresp - (m_to_corresp*edgeIJ_norm) * edgeIJ_norm, circleRadius);
+    double s = (m_to_b*m_to_corresp_in_circle)/circleRadius;
+    if (s < 0) return 2*s*s - circleRadiusSquared;
+    return -2*s*s - circleRadiusSquared;
 }
 
 
@@ -499,17 +502,9 @@ std::vector<BPA::PivotResultStep> BPA::serializePivotResult(BPA::PivotResult piv
 }
 
 bool BPA::used(VertexIndex vertexIndex) {
-    return usedVertices.end() != std::find(usedVertices.begin(), usedVertices.end(), vertexIndex);
+    return usedVertices.count(vertexIndex);
 }
 
 void BPA::printFaceIndicees(Triangle triangle) {
     DBOUT << "(" << triangle.i << "," << triangle.j << "," << triangle.k << ")"<< std::endl;
 }
-
-
-
-
-
-
-
-
