@@ -28,6 +28,7 @@ class BPA {
         std::unordered_map<Triangle, Vector> faceNormals;
         Query query;
         Front front;
+        bool started;
         bool done;
         bool multiRollingOccured;
         std::unordered_set<VertexIndex> usedVertices;
@@ -46,7 +47,6 @@ class BPA {
     public:
         struct Result {
             std::vector<Triangle> faces;
-            bool boundaryExists;
             size_t numOfUsedVertices;
             bool multiRollingOccured;
         };

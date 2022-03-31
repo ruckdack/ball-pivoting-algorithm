@@ -18,6 +18,7 @@ BPA::BPA(const Vertices &v, const double ballRad)
 : vertices(v)
 , ballRadius(ballRad)
 , query(vertices, 2*ballRadius)
+, started(false)
 , done(false)
 , multiRollingOccured(false) {
 }
@@ -39,7 +40,6 @@ BPA::Result BPA::run() {
     }
     Result result;
     result.faces = convertToVector(faces);
-    result.boundaryExists = front.nonemptyBoundary();
     result.numOfUsedVertices = usedVertices.size();
     result.multiRollingOccured = multiRollingOccured;
     return result;
@@ -49,7 +49,7 @@ void BPA::insertSeedTriangle(BPA::PivotResultStep pivotResultStep) {
     Triangle seedTriangle = { pivotResultStep.edge.j, pivotResultStep.edge.i, pivotResultStep.vertex};
     Vertex newBallPosition = pivotResultStep.ballPosition;
     faces.insert(seedTriangle);
-    Vector faceNormal = setMag(cross(conn(vertices[seedTriangle.i], vertices[seedTriangle.j]), conn(vertices[seedTriangle.i], vertices[seedTriangle.k])), 1.0);
+    Vector faceNormal = setMag(cross(conn(vertices[seedTriangle.i], vertices[seedTriangle.k]), conn(vertices[seedTriangle.i], vertices[seedTriangle.j])), 1.0);
     seedTriangle.normal = faceNormal;
     DBOUT << "inital triangle: " << std::endl;
     printFaceIndicees(seedTriangle);
@@ -66,12 +66,21 @@ void BPA::insertPivotResultStep(BPA::PivotResultStep pivotResultStep) {
     Edge edge = pivotResultStep.edge;
     VertexIndex vertexIndex = pivotResultStep.vertex;
     Vertex newBallPosition = pivotResultStep.ballPosition;
-    ASSERT(!used(vertexIndex) || front.contains(vertexIndex));
+    // ASSERT(!used(vertexIndex) || front.contains(vertexIndex));
     Triangle newFace = {edge.i, vertexIndex, edge.j};
-    Vector faceNormal = setMag(cross(conn(vertices[edge.i], vertices[edge.j]), conn(vertices[edge.i], vertices[vertexIndex])), 1.0);
+    Vector faceNormal = setMag(cross(conn(vertices[edge.i], vertices[vertexIndex]), conn(vertices[edge.i], vertices[edge.j])), 1.0);
     newFace.normal = faceNormal;
     ASSERTM(!faces.count(newFace), "cannot add already reconstructed face again");
-    faces.insert(newFace);
+    Triangle flippedFace1 = {edge.i, edge.j, vertexIndex};
+    Triangle flippedFace2 = {vertexIndex, edge.i, edge.j};
+    // check if face exists but with flipped orientation
+    if (faces.count(flippedFace1)) {
+        faces.erase(flippedFace1);
+    } else if (faces.count(flippedFace2)) {
+        faces.erase(flippedFace2);
+    } else {
+        faces.insert(newFace);
+    }
     usedVertices.insert(vertexIndex);
     front.join(edge, vertexIndex, newBallPosition);
     DBOUT << "new triangle: " << std::endl;
@@ -87,7 +96,7 @@ void BPA::insertPivotResultStep(BPA::PivotResultStep pivotResultStep) {
 
 void BPA::step() {
     std::optional<Edge> boundaryEdge;
-    if (faces.size() == 0) {
+    if (!started) {
         if (PivotResult pivotResult = findSeedTriangle(); pivotResult.vertices.size() != 0) {
             // filter for only on boundary or not used
             std::vector<VertexIndex> filteredVertices;
@@ -106,6 +115,7 @@ void BPA::step() {
             done = true;
             INFOUT << "Found no seed triangle." << std::endl;
         }
+        started = true;
     } else {
         if (std::optional<Front::ActiveEdge> optionalActiveEdge = front.getActiveEdge()) {
             Edge edge = optionalActiveEdge.value().edge;
@@ -115,8 +125,15 @@ void BPA::step() {
             // filter for only on boundary or not used
             std::vector<VertexIndex> filteredVertices;
             for (VertexIndex vertexIndex : pivotResult.vertices) {
-                if (!used(vertexIndex) || front.contains(vertexIndex)) {
+                if (!used(vertexIndex) || front.contains(vertexIndex) || vertexIndex == correspVertexIndex) {
                     filteredVertices.push_back(vertexIndex);
+                    if (vertexIndex == correspVertexIndex) {
+                        if (front.contains({correspVertexIndex, edge.i})) {
+                            usedVertices.erase(edge.i);
+                        } else if (front.contains({edge.j, correspVertexIndex})) {
+                            usedVertices.erase(edge.j);
+                        }
+                    }
                 }
             }
             pivotResult.vertices = filteredVertices;
@@ -198,6 +215,9 @@ BPA::PivotResult BPA::findSeedTriangle() {
 }
 
 BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspVertexIndex) {
+    if (equals(vertices[edge.i].x, 0.790629000000000000) || equals(vertices[edge.j].x, 0.790629000000000000)) {
+        std::cout << "";
+    }
     std::vector<VertexIndex> neighbours = query.getNeighbourhood(edge);
     Vertex e_i = vertices[edge.i];
     Vertex e_j = vertices[edge.j];
@@ -229,9 +249,9 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
     circle.normal = setMag(e_i_to_e_j, 1.0);
     #pragma omp parallel for
     for (VertexIndex neighbour : neighbours) {
-        if (correspVertexIndex && correspVertexIndex.value() == neighbour) {
-            continue;
-        }
+        // if (correspVertexIndex && correspVertexIndex.value() == neighbour) {
+        //     continue;
+        // }
         Sphere sphere = {};
         sphere.center = vertices[neighbour];
         sphere.radius = r_b;
@@ -253,7 +273,7 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
                 }
                 if (equals(i, newBallPosition)) {
                     newVertexIndicees.push_back(neighbour);
-                } else if (p > maxDotProduct) {
+                } else if (p > maxDotProduct || equals(p, maxDotProduct)) {
                     maxDotProduct = p;
                     newVertexIndicees = {neighbour};
                     newBallPosition = i;
@@ -269,18 +289,18 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
     }
     if (newVertexIndicees.size() > 1) multiRollingOccured = true;
     float MAX_ANGLE = M_PI_2;
-    for (VertexIndex newVertexIndex : newVertexIndicees) {
-        // this face normal is only correct under the assumption that all new vertex indicees are approximately planar
-        Vector faceNormal = setMag(cross(conn(e_i, vertices[newVertexIndex]), e_i_to_e_j), 1.0);
-        if (std::acos(vertices[edge.i].inputNormal*faceNormal) > MAX_ANGLE ||
-            std::acos(vertices[edge.j].inputNormal*faceNormal) > MAX_ANGLE ||
-            std::acos(vertices[newVertexIndex].inputNormal*faceNormal) > MAX_ANGLE) {
-            DBOUT << "normals of found face deviate too much from vertex normals" << std::endl;
-            PivotResult pivotResult = {};
-            pivotResult.vertices = std::vector<VertexIndex>();
-            return pivotResult;
-        }
-    }
+    // for (VertexIndex newVertexIndex : newVertexIndicees) {
+    //     // this face normal is only correct under the assumption that all new vertex indicees are approximately planar
+    //     Vector faceNormal = setMag(cross(conn(e_i, vertices[newVertexIndex]), e_i_to_e_j), 1.0);
+    //     if (std::acos(vertices[edge.i].inputNormal*faceNormal) > MAX_ANGLE ||
+    //         std::acos(vertices[edge.j].inputNormal*faceNormal) > MAX_ANGLE ||
+    //         std::acos(vertices[newVertexIndex].inputNormal*faceNormal) > MAX_ANGLE) {
+    //         DBOUT << "normals of found face deviate too much from vertex normals" << std::endl;
+    //         PivotResult pivotResult = {};
+    //         pivotResult.vertices = std::vector<VertexIndex>();
+    //         return pivotResult;
+    //     }
+    // }
     #ifdef ASSERTIONS
         DBOUT << "checked " << neighbours.size() << " neighbours" << std::endl;
         DBOUT << "found " << newVertexIndicees.size() << " new vertices:" << std::endl;
