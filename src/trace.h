@@ -1,4 +1,4 @@
-#define DEBUG
+// #define DEBUG
 #define ASSERTIONS
 
 #ifdef DEBUG

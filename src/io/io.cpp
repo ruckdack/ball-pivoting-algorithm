@@ -10,10 +10,10 @@
 #include <iostream>
 #include <cassert>
 
-Points IO::readCloud(std::string path) {
+Vertices IO::readCloud(const std::string path) {
     // TODO reserve enough space
-    Vertices vertices;
-    Vectors normals;
+    Vertices fileVertices;
+    Vectors fileNormals;
     std::vector<PointIndex> pointIndicees;
     std::ifstream file(path);
     if (!file.is_open()) {
@@ -26,10 +26,10 @@ Points IO::readCloud(std::string path) {
             throw std::runtime_error("Wrong file format.");
         if (splittedLine[0] == "v") {
             Vertex vertex = readVertex(splittedLine);
-            vertices.emplace_back(vertex);
+            fileVertices.emplace_back(vertex);
         } else if (splittedLine[0] == "vn") {
             Vector normal = readNormal(splittedLine);
-            normals.emplace_back(normal);
+            fileNormals.emplace_back(normal);
         } else if (splittedLine[0] == "p") {
             PointIndex pointIndex = readPointIndex(splittedLine);
             pointIndicees.emplace_back(pointIndex);
@@ -37,27 +37,21 @@ Points IO::readCloud(std::string path) {
     }
     if (pointIndicees.size() == 0)
         throw std::runtime_error("No points found in file.");
-    Vertices alignedVertices;
-    Vectors alignedNormals;
+    Vertices vertices;
     for (PointIndex pointIndex : pointIndicees) {
         // check indicees
-        if (pointIndex.vertexIndex < 0 || pointIndex.vertexIndex >= vertices.size())
+        if (pointIndex.vertexIndex < 0 || pointIndex.vertexIndex >= fileVertices.size())
             throw std::runtime_error("Wrong indexing.");
-        if (pointIndex.normalIndex < 0 || pointIndex.normalIndex >= normals.size())
+        if (pointIndex.normalIndex < 0 || pointIndex.normalIndex >= fileNormals.size())
             throw std::runtime_error("Wrong indexing.");
-        alignedVertices.emplace_back(vertices[pointIndex.vertexIndex]);
-        alignedNormals.emplace_back(normals[pointIndex.normalIndex]);
+        Vertex &fileVertex = fileVertices[pointIndex.vertexIndex];
+        fileVertex.inputNormal = fileNormals[pointIndex.normalIndex];
+        vertices.push_back(fileVertex);
     }
-    Points points;
-    points.vertices = alignedVertices;
-    points.normals = alignedNormals;
-    points.size = pointIndicees.size();
-    ASSERT(points.size == points.vertices.size());
-    ASSERT(points.size == points.normals.size());
-    return points;
+    return vertices;
 }
 
-Vertex IO::readVertex(std::vector<std::string> splittedLine) {
+Vertex IO::readVertex(const std::vector<std::string> splittedLine) {
     if (splittedLine.size() != 4) 
         throw std::runtime_error("Wrong file format (in vertex definition).");
     ASSERT(splittedLine[0] == "v");
@@ -67,7 +61,7 @@ Vertex IO::readVertex(std::vector<std::string> splittedLine) {
     return {x, y, z};
 }
 
-Vector IO::readNormal(std::vector<std::string> splittedLine) {
+Vector IO::readNormal(const std::vector<std::string> splittedLine) {
     if (splittedLine.size() != 4) 
         throw std::runtime_error("Wrong file format (in normal definition).");
     ASSERT(splittedLine[0] == "vn");
@@ -78,7 +72,7 @@ Vector IO::readNormal(std::vector<std::string> splittedLine) {
     return normal;
 }
 
-PointIndex IO::readPointIndex(std::vector<std::string> splittedLine) {
+IO::PointIndex IO::readPointIndex(const std::vector<std::string> splittedLine) {
     if (splittedLine.size() != 2)
         throw std::runtime_error("Wrong file format (in point definition).");
     ASSERT(splittedLine[0] == "p");
@@ -95,16 +89,16 @@ PointIndex IO::readPointIndex(std::vector<std::string> splittedLine) {
     return pointIndex;
 }
 
-void IO::writeMesh(std::string path, Points &points, std::vector<Triangle> &faces, std::vector<float> &normalsDeviations) {
+void IO::writeMesh(const std::string path, const Vertices &vertices, const std::vector<Triangle> &faces) {
     std::ofstream file(path);
     if (!file.is_open()) {
         throw std::runtime_error("Creating file failed.");
     }
-    for (Vertex vertex : points.vertices) {
+    for (Vertex vertex : vertices) {
         file << "v " << vertex.x << " " << vertex.y << " " << vertex.z << std::endl;
     }
-    for (float normalsDeviation : normalsDeviations) {
-        file << "vt " << normalsDeviation << " 0.5" << std::endl;
+    for (Vertex vertex : vertices) {
+        file << "vt " << vertex.normalDeviation << " 0.5" << std::endl;
     }
     for (Triangle face : faces) {
         file << "f";

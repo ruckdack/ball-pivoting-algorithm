@@ -4,10 +4,19 @@
 #include <string>
 #include <list>
 
+struct Vector {
+    double x;
+    double y;
+    double z;
+};
+typedef std::vector<Vector> Vectors;
+
 struct Vertex {
     double x;
     double y;
     double z;
+    Vector inputNormal;
+    double normalDeviation;
 };
 typedef size_t VertexIndex;
 typedef std::vector<Vertex> Vertices;
@@ -29,30 +38,13 @@ struct Triangle {
     VertexIndex i;
     VertexIndex j;
     VertexIndex k;
+    Vector normal;
 };
 
 template<> struct std::hash<Triangle> {
     inline size_t operator()(const Triangle &t) const {
         return std::hash<size_t>()(t.i) ^ std::hash<size_t>()(t.j) ^ std::hash<size_t>()(t.k);
     }
-};
-
-struct Vector {
-    double x;
-    double y;
-    double z;
-};
-typedef std::vector<Vector> Vectors;
-
-struct PointIndex {
-    VertexIndex vertexIndex;
-    VertexIndex normalIndex;
-};
-
-struct Points {
-    Vertices vertices;
-    Vectors normals;
-    size_t size;
 };
 
 struct Circle {

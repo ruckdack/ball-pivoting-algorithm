@@ -24,7 +24,6 @@ class BPA {
             std::vector<VertexIndex> additionalCorrespVertexIndicees;
         };
         const Vertices vertices;
-        const Vectors pointcloudNormals;
         const double ballRadius;
         std::unordered_set<Triangle> faces;
         std::unordered_map<Triangle, Vector> faceNormals;
@@ -50,6 +49,6 @@ class BPA {
             bool boundaryExists;
             size_t numOfUsedVertices;
         };
-        BPA(const Points &points, const double ballRadius);
+        BPA(const Vertices &vertices, const double ballRadius);
         Result run();
 };

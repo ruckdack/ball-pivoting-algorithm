@@ -6,7 +6,11 @@
 #include <string>
 
 namespace IO {
-    Vertex readVertex(std::vector<std::string> splittedLine);
-    Vector readNormal(std::vector<std::string> splittedLine);
-    PointIndex readPointIndex(std::vector<std::string> splittedLine);
+    struct PointIndex {
+        VertexIndex vertexIndex;
+        VertexIndex normalIndex;
+    };
+    Vertex readVertex(const std::vector<std::string> splittedLine);
+    Vector readNormal(const std::vector<std::string> splittedLine);
+    PointIndex readPointIndex(const std::vector<std::string> splittedLine);
 }

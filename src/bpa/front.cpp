@@ -16,7 +16,7 @@ std::optional<Front::ActiveEdge> Front::getActiveEdge() {
                 activeEdge.edge = edge;
                 activeEdge.ballPosition = ballPositions[edge];
                 activeEdge.correspVertexIndex = correspVertexIndexMap[edge];
-                if (additionalCorrespVertexIndiceesMap.count(edge)) {
+                if (false && additionalCorrespVertexIndiceesMap.count(edge)) {
                     activeEdge.additionalCorrespVertexIndicees = additionalCorrespVertexIndiceesMap[edge];
                 } else {
                     activeEdge.additionalCorrespVertexIndicees = std::vector<VertexIndex>();

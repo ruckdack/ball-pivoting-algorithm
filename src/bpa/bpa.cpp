@@ -14,14 +14,11 @@
 
 #define _USE_MATH_DEFINES
 
-BPA::BPA(const Points &p, const double ballRad)
-: vertices(p.vertices)
-, pointcloudNormals(p.normals)
+BPA::BPA(const Vertices &v, const double ballRad)
+: vertices(v)
 , ballRadius(ballRad)
 , query(vertices, 2*ballRadius)
 , done(false) {
-    ASSERT(p.size == vertices.size());
-    ASSERT(p.size == pointcloudNormals.size());
 }
 
 BPA::Result BPA::run() {
@@ -32,13 +29,8 @@ BPA::Result BPA::run() {
         #ifdef DEBUG
         if (false) {
             std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
-            Points points = {};
-            points.vertices = vertices;
-            points.normals = pointcloudNormals;
-            points.size = vertices.size();
-            std::vector<float> empty;
             std::vector<Triangle> triangles = convertToVector(faces);
-            IO::writeMesh(path, points, triangles, empty);
+            IO::writeMesh(path, vertices, triangles);
         }
         counter++;
         DBOUT << "count: " << counter << std::endl;
@@ -289,6 +281,7 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
     //         return pivotResult;
     //     }
     // }
+    if (newVertexIndicees.size() > 1) std::cout << "damn" << std::endl;
     #ifdef ASSERTIONS
         DBOUT << "checked " << neighbours.size() << " neighbours" << std::endl;
         DBOUT << "found " << newVertexIndicees.size() << " new vertices:" << std::endl;
@@ -334,25 +327,11 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
 
 double BPA::calcStartingScalarProduct(const Vertex edgeI, const Vertex edgeJ, const Vertex correspVertex, const Vertex ballPosition, const double circleRadius) {
     double circleRadiusSquared = circleRadius*circleRadius;
-    // Vector edgeIJ = conn(edgeI, edgeJ);
-    // Vector planeNormal = setMag(cross(edgeIJ, conn(edgeI, correspVertex)), 1.0);
-    // Vector awayFromEdgeIJ = setMag(cross(edgeIJ, planeNormal), 1.0);
-    // Vertex midPoint = toVertex(conn({0,0,0}, edgeI) + (0.5 * edgeIJ));
-    // Vector midPointToBallPos = setMag(conn(midPoint, ballPosition), 1.0);
-    // could be optimized: is it possible to only calculate in scalar product?
-    // double radian = std::acos(std::clamp(midPointToBallPos*planeNormal, -1.0, 1.0));
-    // ASSERTM(radian >= 0.0, "ball is on wrong side");
-    // double alpha = midPointToBallPos*awayFromEdgeIJ < 0.0 ? M_PI_2-radian+0.0001f : M_PI_2+radian+0.0001f;
-    // double maxPossibleAngle = 2*M_PI - 2*alpha;
-    // maxPossibleAngle = maxPossibleAngle * 0.9f;
-    // if (maxPossibleAngle > M_PI) return -std::cos(maxPossibleAngle) - 2.0;
-    // return std::cos(maxPossibleAngle);
     Vector edgeIJ = conn(edgeI, edgeJ);
     Vector edgeIJ_norm = setMag(edgeIJ, 1.0);
     Vertex m = toVertex(conn({0,0,0}, edgeI) + (0.5 * edgeIJ));
     Vector m_to_b = conn(m, ballPosition);
     Vector m_to_corresp = conn(m, correspVertex);
-    // double dir = m_to_corresp*edgeIJ > 0 ? -1.0 : 1.0;
     Vector m_to_corresp_in_circle = setMag(m_to_corresp - (m_to_corresp*edgeIJ_norm) * edgeIJ_norm, circleRadius);
     double s = (m_to_b*m_to_corresp_in_circle)/circleRadius;
     if (s < 0) return 2*s*s - circleRadiusSquared;

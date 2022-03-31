@@ -7,6 +7,6 @@
 #include <optional>
 
 namespace IO {
-    Points readCloud(std::string path);
-    void writeMesh(std::string path, Points &points, std::vector<Triangle> &faces, std::vector<float> &normalsDeviations);
+    Vertices readCloud(const std::string path);
+    void writeMesh(const std::string path, const Vertices &vertices, const std::vector<Triangle> &faces);
 }

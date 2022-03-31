@@ -34,13 +34,13 @@ int main(int argc, char *argv[]) {
     }
     try {
         INFOUT << "Reading pointcloud..." << std::endl;
-        Points points = IO::readCloud(inputPath);
-        INFOUT << "Read " << points.size << " vertices." << std::endl;
+        Vertices vertices = IO::readCloud(inputPath);
+        INFOUT << "Read " << vertices.size() << " vertices." << std::endl;
         INFOUT << "Running computations..." << std::endl;
         auto start = std::chrono::steady_clock::now();
-        BPA bpa(points, ballRadius);
+        BPA bpa(vertices, ballRadius);
         BPA::Result result = bpa.run();
-        std::vector<float> normalsDeviation = Normals::calculateNormalsDeviation(points, result.faces);
+        Normals::provideNormalsDeviation(vertices, result.faces);
         auto end = std::chrono::steady_clock::now();
         std::chrono::duration<float> elapsed_seconds = end - start;
         INFOUT << "Reconstructed "
@@ -48,11 +48,11 @@ int main(int argc, char *argv[]) {
         << " in " << std::round(elapsed_seconds.count()) 
         << (std::round(elapsed_seconds.count()) == 1 ? " second." : " seconds.") << std::endl;
         INFOUT << "Used " << result.numOfUsedVertices << (result.numOfUsedVertices == 1 ? " vertex (" : " vertices (")
-               << roundToDigits(result.numOfUsedVertices / static_cast<float>(points.size) * 100, 2) << "% of total vertices amount)." << std::endl;
+               << roundToDigits(result.numOfUsedVertices / static_cast<float>(vertices.size()) * 100, 2) << "% of total vertices amount)." << std::endl;
         if (result.boundaryExists) {
             INFOUT << "A boundary was found." << std::endl;
         }
-        IO::writeMesh(outputPath, points, result.faces, normalsDeviation);
+        IO::writeMesh(outputPath, vertices, result.faces);
     } catch (const std::runtime_error& error) {
         ERROUT << error.what() << std::endl;
         return -1;
