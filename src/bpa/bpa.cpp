@@ -66,18 +66,19 @@ void BPA::insertPivotResultStep(BPA::PivotResultStep pivotResultStep) {
     Edge edge = pivotResultStep.edge;
     VertexIndex vertexIndex = pivotResultStep.vertex;
     Vertex newBallPosition = pivotResultStep.ballPosition;
-    // ASSERT(!used(vertexIndex) || front.contains(vertexIndex));
     Triangle newFace = {edge.i, vertexIndex, edge.j};
     Vector faceNormal = setMag(cross(conn(vertices[edge.i], vertices[vertexIndex]), conn(vertices[edge.i], vertices[edge.j])), 1.0);
     newFace.normal = faceNormal;
-    ASSERTM(!faces.count(newFace), "cannot add already reconstructed face again");
-    Triangle flippedFace1 = {edge.i, edge.j, vertexIndex};
-    Triangle flippedFace2 = {vertexIndex, edge.i, edge.j};
+    // ASSERTM(!faces.count(newFace), "cannot add already reconstructed face again");
+    // TODO check why the hash function does not collide with all different orientations / orders
     // check if face exists but with flipped orientation
-    if (faces.count(flippedFace1)) {
-        faces.erase(flippedFace1);
-    } else if (faces.count(flippedFace2)) {
-        faces.erase(flippedFace2);
+    Triangle t1 = {edge.i, edge.j, vertexIndex};
+    Triangle t2 = {vertexIndex, edge.i, edge.j};
+    Triangle t3 = {edge.j, vertexIndex, edge.i};
+    if (faces.count(t1) || faces.count(t2) || faces.count(t3)) {
+        faces.erase(t1);
+        faces.erase(t2);
+        faces.erase(t3);
     } else {
         faces.insert(newFace);
     }
@@ -97,6 +98,7 @@ void BPA::insertPivotResultStep(BPA::PivotResultStep pivotResultStep) {
 void BPA::step() {
     std::optional<Edge> boundaryEdge;
     if (!started) {
+        started = true;
         if (PivotResult pivotResult = findSeedTriangle(); pivotResult.vertices.size() != 0) {
             // filter for only on boundary or not used
             std::vector<VertexIndex> filteredVertices;
@@ -115,7 +117,6 @@ void BPA::step() {
             done = true;
             INFOUT << "Found no seed triangle." << std::endl;
         }
-        started = true;
     } else {
         if (std::optional<Front::ActiveEdge> optionalActiveEdge = front.getActiveEdge()) {
             Edge edge = optionalActiveEdge.value().edge;
@@ -125,15 +126,15 @@ void BPA::step() {
             // filter for only on boundary or not used
             std::vector<VertexIndex> filteredVertices;
             for (VertexIndex vertexIndex : pivotResult.vertices) {
-                if (!used(vertexIndex) || front.contains(vertexIndex) || vertexIndex == correspVertexIndex) {
+                if (!used(vertexIndex) || front.contains(vertexIndex)) {
                     filteredVertices.push_back(vertexIndex);
-                    if (vertexIndex == correspVertexIndex) {
-                        if (front.contains({correspVertexIndex, edge.i})) {
-                            usedVertices.erase(edge.i);
-                        } else if (front.contains({edge.j, correspVertexIndex})) {
-                            usedVertices.erase(edge.j);
-                        }
-                    }
+                    // if (vertexIndex == correspVertexIndex) {
+                    //     if (front.contains({correspVertexIndex, edge.i})) {
+                    //         usedVertices.erase(edge.i);
+                    //     } else if (front.contains({edge.j, correspVertexIndex})) {
+                    //         usedVertices.erase(edge.j);
+                    //     }
+                    // }
                 }
             }
             pivotResult.vertices = filteredVertices;
@@ -215,9 +216,9 @@ BPA::PivotResult BPA::findSeedTriangle() {
 }
 
 BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspVertexIndex) {
-    if (equals(vertices[edge.i].x, 0.790629000000000000) || equals(vertices[edge.j].x, 0.790629000000000000)) {
-        std::cout << "";
-    }
+    // if (equals(vertices[edge.i].x, 0.790629000000000000) || equals(vertices[edge.j].x, 0.790629000000000000)) {
+    //     std::cout << "";
+    // }
     std::vector<VertexIndex> neighbours = query.getNeighbourhood(edge);
     Vertex e_i = vertices[edge.i];
     Vertex e_j = vertices[edge.j];
@@ -288,7 +289,7 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         return pivotResult;
     }
     if (newVertexIndicees.size() > 1) multiRollingOccured = true;
-    float MAX_ANGLE = M_PI_2;
+    // float MAX_ANGLE = M_PI_2;
     // for (VertexIndex newVertexIndex : newVertexIndicees) {
     //     // this face normal is only correct under the assumption that all new vertex indicees are approximately planar
     //     Vector faceNormal = setMag(cross(conn(e_i, vertices[newVertexIndex]), e_i_to_e_j), 1.0);

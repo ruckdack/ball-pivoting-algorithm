@@ -1,5 +1,5 @@
-#define DEBUG
-#define ASSERTIONS
+// #define DEBUG
+// #define ASSERTIONS
 
 #ifdef DEBUG
 #define DBOUT std::cout << "[debug] "
