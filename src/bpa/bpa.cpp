@@ -14,29 +14,18 @@
 
 #define _USE_MATH_DEFINES
 
-BPA::BPA(const Vertices &v, const double ballRad)
+BPA::BPA(const Vertices &v, const double ballRad, const bool reuseVerts)
 : vertices(v)
 , ballRadius(ballRad)
 , query(vertices, 2*ballRadius)
 , started(false)
 , done(false)
-, multiRollingOccured(false) {
-}
+, multiRollingOccured(false)
+, reuseVertices(reuseVerts) {}
 
 BPA::Result BPA::run() {
-    size_t counter = 1;
     while (!done) {
         step();
-        // only for debugging
-        #ifdef DEBUG
-        if (false) {
-            std::string path = "../output/debug/debug_" + std::to_string(counter) + ".obj";
-            std::vector<Triangle> triangles = convertToVector(faces);
-            IO::writeMesh(path, vertices, triangles);
-        }
-        counter++;
-        DBOUT << "count: " << counter << std::endl;
-        #endif
     }
     Result result;
     result.faces = convertToVector(faces);
@@ -69,19 +58,13 @@ void BPA::insertPivotResultStep(BPA::PivotResultStep pivotResultStep) {
     Triangle newFace = {edge.i, vertexIndex, edge.j};
     Vector faceNormal = setMag(cross(conn(vertices[edge.i], vertices[vertexIndex]), conn(vertices[edge.i], vertices[edge.j])), 1.0);
     newFace.normal = faceNormal;
-    // ASSERTM(!faces.count(newFace), "cannot add already reconstructed face again");
-    // TODO check why the hash function does not collide with all different orientations / orders
-    // check if face exists but with flipped orientation
-    Triangle t1 = {edge.i, edge.j, vertexIndex};
-    Triangle t2 = {vertexIndex, edge.i, edge.j};
-    Triangle t3 = {edge.j, vertexIndex, edge.i};
-    if (faces.count(t1) || faces.count(t2) || faces.count(t3)) {
-        faces.erase(t1);
-        faces.erase(t2);
-        faces.erase(t3);
-    } else {
-        faces.insert(newFace);
+    Triangle rotation1 = {newFace.j, newFace.k, newFace.i};
+    Triangle rotation2 = {newFace.k, newFace.i, newFace.j};
+    if (reuseVertices && (faces.count(newFace) || faces.count(rotation1) || faces.count(rotation2))) {
+        front.markAsBoundary(edge);
+        return;
     }
+    faces.insert(newFace);
     usedVertices.insert(vertexIndex);
     front.join(edge, vertexIndex, newBallPosition);
     DBOUT << "new triangle: " << std::endl;
@@ -102,7 +85,7 @@ void BPA::step() {
         if (PivotResult pivotResult = findSeedTriangle(); pivotResult.vertices.size() != 0) {
             // filter for only on boundary or not used
             std::vector<VertexIndex> filteredVertices;
-            for (VertexIndex vertexIndex : pivotResult.vertices) {
+            for (VertexIndex &vertexIndex : pivotResult.vertices) {
                 if (!used(vertexIndex) || front.contains(vertexIndex)) {
                     filteredVertices.push_back(vertexIndex);
                 }
@@ -125,16 +108,9 @@ void BPA::step() {
             PivotResult pivotResult = ballPivot(edge, ballPosition, correspVertexIndex);
             // filter for only on boundary or not used
             std::vector<VertexIndex> filteredVertices;
-            for (VertexIndex vertexIndex : pivotResult.vertices) {
+            for (VertexIndex &vertexIndex : pivotResult.vertices) {
                 if (!used(vertexIndex) || front.contains(vertexIndex)) {
                     filteredVertices.push_back(vertexIndex);
-                    // if (vertexIndex == correspVertexIndex) {
-                    //     if (front.contains({correspVertexIndex, edge.i})) {
-                    //         usedVertices.erase(edge.i);
-                    //     } else if (front.contains({edge.j, correspVertexIndex})) {
-                    //         usedVertices.erase(edge.j);
-                    //     }
-                    // }
                 }
             }
             pivotResult.vertices = filteredVertices;
@@ -216,9 +192,6 @@ BPA::PivotResult BPA::findSeedTriangle() {
 }
 
 BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, const std::optional<VertexIndex> correspVertexIndex) {
-    // if (equals(vertices[edge.i].x, 0.790629000000000000) || equals(vertices[edge.j].x, 0.790629000000000000)) {
-    //     std::cout << "";
-    // }
     std::vector<VertexIndex> neighbours = query.getNeighbourhood(edge);
     Vertex e_i = vertices[edge.i];
     Vertex e_j = vertices[edge.j];
@@ -250,9 +223,9 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
     circle.normal = setMag(e_i_to_e_j, 1.0);
     #pragma omp parallel for
     for (VertexIndex neighbour : neighbours) {
-        // if (correspVertexIndex && correspVertexIndex.value() == neighbour) {
-        //     continue;
-        // }
+        if (!reuseVertices && correspVertexIndex && correspVertexIndex.value() == neighbour) {
+            continue;
+        }
         Sphere sphere = {};
         sphere.center = vertices[neighbour];
         sphere.radius = r_b;
@@ -289,7 +262,7 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         return pivotResult;
     }
     if (newVertexIndicees.size() > 1) multiRollingOccured = true;
-    // float MAX_ANGLE = M_PI_2;
+    float MAX_ANGLE = M_PI_2;
     // for (VertexIndex newVertexIndex : newVertexIndicees) {
     //     // this face normal is only correct under the assumption that all new vertex indicees are approximately planar
     //     Vector faceNormal = setMag(cross(conn(e_i, vertices[newVertexIndex]), e_i_to_e_j), 1.0);
@@ -492,6 +465,7 @@ std::vector<BPA::PivotResultStep> BPA::serializePivotResult(BPA::PivotResult piv
 }
 
 bool BPA::used(VertexIndex vertexIndex) {
+    if (reuseVertices) return false;
     return usedVertices.count(vertexIndex);
 }
 

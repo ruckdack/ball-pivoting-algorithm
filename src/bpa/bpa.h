@@ -24,6 +24,7 @@ class BPA {
         };
         const Vertices vertices;
         const double ballRadius;
+        const bool reuseVertices;
         std::unordered_set<Triangle> faces;
         std::unordered_map<Triangle, Vector> faceNormals;
         Query query;
@@ -50,6 +51,6 @@ class BPA {
             size_t numOfUsedVertices;
             bool multiRollingOccured;
         };
-        BPA(const Vertices &vertices, const double ballRadius);
+        BPA(const Vertices &vertices, const double ballRadius, const bool reuseVertices);
         Result run();
 };

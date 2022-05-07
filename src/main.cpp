@@ -17,17 +17,18 @@ int main(int argc, char *argv[]) {
     #if defined(_OPENMP)
         INFOUT << "OpenMP enabled." << std::endl;
     #endif
-    size_t numOfArgs = 3;
-    if (argc > numOfArgs + 1) {
-        ERROUT << "Too many arguments." << std::endl;
-        return 0;
-    } else if (argc < numOfArgs + 1) {
-        ERROUT << "Not enough arguments." << std::endl;
+    if (argc != 4 && argc != 5) {
+        ERROUT << "Wrong arguments." << std::endl;
         return 0;
     }
     float ballRadius = std::stof(argv[1]);
     std::string inputPath(argv[2]);
     std::string outputPath(argv[3]);
+    bool reuseVertices = false;
+    if (argc == 5) {
+        std::string reuseVerticesString(argv[4]);
+        reuseVertices = reuseVerticesString.size() == 2 && reuseVerticesString[0] == '-' && reuseVerticesString[1] == 'r';
+    }
     if (!pathSyntaxValid(inputPath) || !pathSyntaxValid(outputPath)) {
         ERROUT << "Wrong path syntax." << std::endl;
         return -1;
@@ -36,9 +37,9 @@ int main(int argc, char *argv[]) {
         INFOUT << "Reading pointcloud..." << std::endl;
         Vertices vertices = IO::readCloud(inputPath);
         INFOUT << "Read " << vertices.size() << " vertices." << std::endl;
-        INFOUT << "Running computations..." << std::endl;
+        INFOUT << "Running computations" << (reuseVertices ? " (reusing vertices)..." : "...") << std::endl;
         auto start = std::chrono::steady_clock::now();
-        BPA bpa(vertices, ballRadius);
+        BPA bpa(vertices, ballRadius, reuseVertices);
         BPA::Result result = bpa.run();
         Normals::provideNormalsDeviation(vertices, result.faces);
         auto end = std::chrono::steady_clock::now();
