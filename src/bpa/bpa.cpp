@@ -9,7 +9,6 @@
 #include <set>
 #include <iostream>
 #include <map>
-#include <omp.h>
 #include <unistd.h>
 
 #define _USE_MATH_DEFINES
@@ -221,7 +220,6 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
     circle.center = m;
     circle.radius = r_c;
     circle.normal = setMag(e_i_to_e_j, 1.0);
-    #pragma omp parallel for
     for (VertexIndex neighbour : neighbours) {
         if (!reuseVertices && correspVertexIndex && correspVertexIndex.value() == neighbour) {
             continue;
@@ -230,7 +228,6 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         sphere.center = vertices[neighbour];
         sphere.radius = r_b;
         std::vector<Vertex> intersections = intersectCircleSphere(circle, sphere);
-        #pragma omp critical
         {
             for (Vertex i : intersections) {
                 if (equals(i, ballPosition)) continue;
@@ -262,7 +259,7 @@ BPA::PivotResult BPA::ballPivot(const Edge edge, const Vertex ballPosition, cons
         return pivotResult;
     }
     if (newVertexIndicees.size() > 1) multiRollingOccured = true;
-    float MAX_ANGLE = M_PI_2;
+    // float MAX_ANGLE = M_PI_2;
     // for (VertexIndex newVertexIndex : newVertexIndicees) {
     //     // this face normal is only correct under the assumption that all new vertex indicees are approximately planar
     //     Vector faceNormal = setMag(cross(conn(e_i, vertices[newVertexIndex]), e_i_to_e_j), 1.0);
