@@ -17,8 +17,8 @@ This implementation was written in C++. To compile and run the program, follow t
 
 **ball radius**: ball radius
 
-**point cloud file path>**: point cloud (.obj)
+**point cloud file path**: point cloud in .obj format
 
-**output file path**: output file path (.obj)
+**output file path**: output file path in .obj format
 
 **-r (optional)**: reuses vertices (allows degenerated surface parts)
