@@ -15,7 +15,10 @@ This implementation was written in C++. To compile and run the program, follow t
 
 `> ./BPA <ball radius> <point cloud file path> <output file path> (-r)`
 
-**ball radius**: ball radius 
+**ball radius**: ball radius
+
 **point cloud file path>**: point cloud (.obj)
+
 **output file path**: output file path (.obj)
+
 **-r (optional)**: reuses vertices (allows degenerated surface parts)
